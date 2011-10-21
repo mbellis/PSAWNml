@@ -2,13 +2,14 @@
 % FUNCTION DEMO_PS
 %==================
 % 
-% DEMO runs a demonstration
+% DEMO_PS load global variables used by other PSAWN scripts
 % demo must be run from inside the main directory:
-% 'cd .../psawnML/'
+% 'cd .../psawnml/'
 % 'demo_ps'
 %
 % GLOBAL VARIABLES
-% K.dir contains directory paths
+% K.dir contains directory paths and must be edited to match the existing directories
+% K.chip contains information on chips
 
 
 %¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤%
@@ -49,8 +50,9 @@ K.dir.mlprog=pwd;
 K.dir.mldata='/home/mbellis/sosma/data/psawn/mldata';
 K.dir.pydata='/home/mbellis/sosma/data/psawn/pydata';
 K.dir.rawdata='/home/mbellis/sosma/data/psawn/rawdata';
+K.dir.cliquer='/usr/local/cliquer/cl';
 K.dir.net='/home/mbellis/net';
-K.dir.table='/usr/data/net';
+
 
 cd(K.dir.mlprog)
 IsK=0;

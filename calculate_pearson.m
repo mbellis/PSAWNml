@@ -108,7 +108,7 @@ end
 
 function [FirstPsRank,SndPsRank,RankCorr,SignalCorr]=PEARSON(ChipRank,Dup,NetPs)
 global K
-DataDir=fullfile(K.dir.table,sprintf('m%u',ChipRank),sprintf('m%u_data',ChipRank));
+DataDir=fullfile(K.dir.net,sprintf('m%03u',ChipRank),'data','experiment');
 cd(DataDir)
 load DataRanks
 FirstPsRank=[];

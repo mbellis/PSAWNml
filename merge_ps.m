@@ -1620,8 +1620,8 @@ while Continue
             for GrpL=1:size(Intersections,1)
                 fprintf(fid,'e %u %u\n',Intersections(GrpL,1),Intersections(GrpL,2));
             end
-            fclose(fid);
-            eval(sprintf('! /usr/local/cliquer/cl -su %s/cliquer.txt>%s/cliquer_res.txt;',CurrDir,CurrDir))
+            fclose(fid);            
+            eval(sprintf('! %s -su %s/cliquer.txt>%s/cliquer_res.txt;',K.dir.cliquer,CurrDir,CurrDir))
             GrpPos{Round}=load('cliquer_res.txt');
             if length(GrpPos{Round})<=1
                 Continue=0;
