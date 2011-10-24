@@ -1,116 +1,209 @@
 %===================%
 % FUNCTION MERGE_PS %
 %===================%
-
+%
 % MERGE_PS finds the group of probe sets which target common transcripts on the basis
-% of their similar behavior in several netwodks : high positive correlation, low
+% of their similar behavior in several networks : high positive correlation, low
 % negative correlation and a highly similar neighbourhood, as measured by pv(overlap) which
 % is the p-value of observing a given number of common neighbors under a hypergeometric
 % distribution
-
-
-%INPUT PARAMETERS
-% 1 ChipRank:
-% 2 NetRanks:
-% 3 ProbeNb:
-% 3 ProbeNbLimit:
-% 4 PvCorrRanks:
-% 5 StepList
-
-
-%FUNCTION
-%   merge ps by using several informations
-%INPUT
-% Limit
-% ChipRank
-% NetRanks
-% NetPoss
-% EnsExonGeneNbs
-% AceExonGeneNbs
-% EnsSimOut
-% AceSimOut
-% Ps
-% ProbeNbLimit
 %
+%
+%
+%INPUT PARAMETERS
+%  1        Species: species
+%  2       ChipRank: chip rank
+%  3       NetRanks: ranks of networks used
+%  4   ProbeNbLimit: minimum number of probes targeting a gene
+%  5     PvCorrRank: pv(overlap) is calculated for corr limit >[0,40,50,60]. PvCorrRank
+%                    indicates the corr limit to be used, by giving its index in
+%                    the corr list([0,40,50,60])
+%  6      StepRanks: list of merge_ps steps to be processed
+%  7 NetFrequencies: list of net frequencies that mus be considered ([1,25,50,75,100],
+%                    recommended)
+%  8    DisplayFlag: indicates if figures must be displayed
+%  9        SumFlag: indicates if positive networks are those where probe set pair correlation 
+%                    is positive (=1) or those where probe sets satisfy all the tested conditions
+%                    (positive and negative correlation and p-value of overlaping of their 
+%                    neighbourhood) (=0, recommended)
+% 10        ValFlag: indicates if all values of corr, anti and pv of each pair are used 
+%                    (=1, recommended), or only a single derived value (mean - std) (=0) to
+%                    calculate limits used for testing probe set pairs
+% 11       MeanFlag: indicates if limits are calculated from mean of four values (single and
+%                    multiple targeted genes, and InSim and OutSim) (=1) or only from single
+%                    targeted genes and InSim (=0, recommended)
+% 12        AceFlag: indicates if AceView data are available
+% 13       IdemFlag: indicates if probe set order is identical in file used by PsawnPy et in
+%                    networks (=1 in general case, if =0 a m%u_net.txt file must exist 
+%                    in K.dir.rawdata)
+%
+% MERGE_PS STEPS (SterpRanks parameter)
+% 1 CONSTRUCT NEWPS
+% 2 CALCULATE LIMITS
+% 3 COMPLETE NEWPS
+% 4 CONSTRUCT PSBY
+% 5 STAT ON THE THIRD EDGE IN PROBE SET TRIANGLES
+% 6 SUMMARIZE (CONSTRUCT PSMATRIX)
+% 7 FIGURES 36 TO 38
+% 8 WRITE TXT FILES
+%	1: gene ID
+%	2: first probe set ID
+%	3: second probe set ID
+%	4: first probe set rank in PsMatrix
+%	5: second probe set rank in PsMatrix
+%	6: indicates if the probe set is paired in 1% PsMatrix
+%	7: indicates if the probe set is paired in 25% PsMatrix
+%	8: indicates if the probe set is paired in 50% PsMatrix
+%	9: indicates if the probe set is paired in 75% PsMatrix
+%	10: indicates if the probe set is paired in 100% PsMatrix
+%   pivot information for fields 6 to 10:
+%	    if first and second probe sets are not a pivot => 1
+%		if only one of them is a pivot => 2
+%		if both are pivots => 3
+%	11: probe set class (3=MU, 4=MM, 5=CX, 6=HX)
+%	12: number of probes of the first probe set targeting the assigned gene
+%	13: number of genes targeted by the first probe set with the same number of probes
+%	14: number of genes targeted by the first probe set with an inferior number of probes
+%	15: number of probes of the second probe set targeting the assigned gene
+%	16: number of genes targeted by the second probe set with the same number of probes
+%	17: number of genes targeted by the second probe set with an inferior number of probes
+%	18: v: the probe set pair is tested in all the networks,
+%	    *: the probe set pair is absent of at leat one networks (~1% of all pairs)
+
+
 %SUB FUNCTIONS
 %
+%   LOADSIM
+%     Load sim 
+%     INPUT PARAMETERS
+%      1   ChipRank : the rank of chip set model
+%      2   NetRanks : a list of network rank
+%      3 PvCorrRanks: five series of p-values are calculated (on edges with
+%                     corr>=0,10,20,30,40,50)
+%      4   FileName : the common part of or file name to be loaded
+%
+%     OUTPUT
+%      AllVal : all CORR,ANTI and PV (p-values) of the networks
+%         Sim : The last loaded Sim
+%
 %   CONSTRUCT_NEWPS
-%      construct a new structure (NewPs) containing information about relationships between probe sets
-%      one record per probe set with this structure
-%           NewPs{PsL,1}.geneNames: EnsGeneID or Ace gene names targeted by
-%                   the probeset
-%             NewPs{PsL,1}.probeNb: nb of probes in each targeted gene
+%      construct a new structure (NewPs) containing information about relationships
+%      between probe sets
+%      one record per probe set within this structure:
+%         NewPs{PsL,1}.geneNames: EnsGeneID or Ace gene names targeted by
+%                                   the probeset
+%           NewPs{PsL,1}.probeNb: nb of probes in each targeted gene
 %           NewPs{PsL,1}.psRanks: rank ot other probe set which target the
-%                                  same genes
-%           NewPs{PsL,1}.source: 1=Ensembl genes; 2=AceView genes (not found
-%                                  in Ensembl)
-%           NewPs{PsL,1}.target: 1=in exon or splice; 2=in up, intron or down
+%                                 same genes
+%            NewPs{PsL,1}.source: 1=Ensembl genes; 2=AceView genes (not found
+%                                 in Ensembl)
+%            NewPs{PsL,1}.target: 1=in exon or splice; 2=in up, intron or down
 %      constructs also
-%           Genes.name contains all the gene names targetted by at least one probe set;
-%           Genes.source source of the gene (1=Ens; 2=Ace)
+%           Genes.name: all the gene names targetted by at least one probe set;
+%         Genes.source: source of the gene (1=Ensembl; 2=AceView)
 %      and
-%           PsBy.gene indicates for each position of Genes, the ranks of the
-%           probe sets that target that gene
+%         PsBy.gene: for each position of Genes, indcates the ranks of the
+%                    probe sets that target that gene
 %
 %   FILL_PAIRED
 %      add information in NewPs
-%          NewPs{PsL,1}.psRanks: other probeset targetting the sames genes
-%          NewPs{PsL,1}.corr: mean corr between the current probeset and
-%                             the other probe sets
-%          NewPs{PsL,1}.anti: mean anti ...
-%          NewPs{PsL,1}.pv: mean pv ...
-%          NewPs{PsL,1}.repnb: number of network in which there are
-%                              significative corr or anti values
-%          NewPs{PsL,1}.stdcorr: std corr ...
-%          NewPs{PsL,1}.stdanti: std anti ...
-%          NewPs{PsL,1}.stdpv: std pv ...
+%         NewPs{PsL,1}.psRanks: other probeset targetting the sames genes
+%            NewPs{PsL,1}.corr: mean corr between the current probeset and
+%                               the other probe sets
+%            NewPs{PsL,1}.anti: mean anti ...
+%              NewPs{PsL,1}.pv: mean pv ...
+%           NewPs{PsL,1}.repnb: number of network in which there are
+%                               significative corr or anti values
+%         NewPs{PsL,1}.stdcorr: std corr ...
+%         NewPs{PsL,1}.stdanti: std anti ...
+%           NewPs{PsL,1}.stdpv: std pv ...
 %       new pairs of probe sets are recovered at this step which needs
-%          to calculate their corr, anti, pv, repnb, stdcorr, stdanti & stdpv
-%          in the networks used
+%       to calculate their corr, anti, pv, repnb, stdcorr, stdanti & stdpv
+%       in the networks used
 %
 %   CONSTRUCT_PSBY
-%        for each targeted gene recover all the probe set that target this
-%        gene and construct the matrix of their interactions (corr, anti,
-%        pv, repnb, stdcorr, stdanti, stdpv).
+%       for each targeted gene recover all the probe set that target this
+%       gene and construct the matrix of their interactions (corr, anti,
+%       pv, repnb, stdcorr, stdanti, stdpv)
+%
+%   STAT
+%      OUTPUT
 
+%        Stat, a structure containing information about genes targeted by probe sets
+%           Stat.singleTargNb: The number of genes that are targetted only 
+%                              by the current probe set
+%           Stat.doubleTargNb: The number of genes that are targetted by the current probe
+%                              set plus a single other one
+%         Stat.multipleTargNb: The number of genes that are are targetted by the current 
+%                              probe set plus two or more another probe sets
+%          Stat.maxPsNb=zeros: The maximum nb of probe sets targetting a gene targeted 
+%                              by the current probe set
+%               Stat.grpSizes: the distribution of ps group sizes
+%              Stat.linkTypes: the type of link (0: no corr, 1:don't pass the test,
+%                              2 pass the test)
+%               Stat.badLinks: Properties of pairs that don't pass the test but are in 
+%                              a ps group:
+%                              [PsL,GeneL,Node1,Node2,Nb of bad links,
+%                              Nb of links,Nb of not significative corr,
+%                              Nb of significative corr];
+%                   Stat.hubs: During merging process of triangle, some transitory groups
+%                              of probe sets are split into two new  groups. Single probe
+%                              sets that are common to these two groups are taken away and
+%                              considered as forming a hub which is in relation with 
+%                              the two groups.
 
-
-% FILL_PSMATRIX
-%PsMatrix:
-%  1: rank of the assigned gene to the current probe set
-%  2: position of the assigned gene in NewPs.geneNames
-%  3: target type of assigned gene
-%  4: source type of assigned gene
-%  5: nb of probe targetting the assigned gene
-%  6: nb of not assigned genes targetted with the same nb of probes
-%  7: nb of not assigned genes targetted with less nb of probes
-%  8: nb of groups of transcripts corresponding to the assigned gene
-%  9: rank of the parent probe set
-% 10: Rank of the group of transcripts targetted by the current
-%     probe set in the assigned gene
-% 11: Rank of the group(s) of transcripts targetted by the current
-%     probe set, if it is a pivot
-% 12: [0,1] indicates if the current probe set is a pivot
-% 13: [0,1] indicates if the current probe set is paired with a pivot
-% 14: nb of probe sets that do not target the assigned gene but target
-%     a common gene with the current probe set        
-% 15: nb of genes that are targetted by probe sets that do not target the
-%     assigned gene
-% 16: nb of genes that are targetted by other probe set with a nb
-%     of probes higher than the number of probes of the current probe set that
-%     target the assigned gene
-% 17: ClassRank
-% 18: and beyond: nb of  other genes targetted with all possible nb of probes
-
-%PARAMETERS
-%OUTPUT
-%   results are written in files
-
-%EXTERNAL FILES
-
-%OUTPUT PARAMETERS
-
-%FIGURES
+%        LinkedPs gives information on pairs of probe set that belong to the same group
+%           LinkedPs{1}: they target a gene with a number of probe smaller than 
+%                        the number of probes of the current ps targeting the assigned gene
+%           LinkedPs{2}: they target a gene with a number of probe equal to the number 
+%                        of probes of the current ps targeting the assigned gene
+%                        [Ps1,Ps2,Target type of targeted gene,
+%                        Nb of probes of Ps1 targeting the gene
+%                        Nb of probes of Ps2 targeting the gene,
+%                        Source type of the targeted gene,
+%                        maximum nb of probes of Ps1 that target a gene,
+%                        maximum nb of probes of Ps1 that target a gene];
+%           LinkedPs{1}(PairPos,:): [Ps1,Ps2,NewPs{Ps1}.target(GenePos1),NewPs{Ps1}.
+%                                    probeNb(GenePos1), NewPs{Ps2}.probeNb(GenePos2),
+%                                    NewPs{Ps1}.source(GenePos1),max(NewPs{Ps1}.probeNb),
+%                                    max(NewPs{Ps2}.probeNb)];
+%
+%   TRIANGLE_STAT
+%      calculate statistics on probe set triangles
+%
+%   SUMMARIZE
+%       fill PsMatrix:
+%          1: rank of the assigned gene to the current probe set
+%          2: position of the assigned gene in NewPs.geneNames
+%          3: target type of assigned gene
+%          4: source type of assigned gene
+%          5: nb of probe targetting the assigned gene
+%          6: nb of not assigned genes targetted with the same nb of probes
+%          7: nb of not assigned genes targetted with less nb of probes
+%          8: nb of groups of transcripts corresponding to the assigned gene
+%          9: rank of the parent probe set
+%         10: Rank of the group of transcripts targetted by the current
+%             probe set in the assigned gene
+%         11: Rank of the group(s) of transcripts targetted by the current
+%             probe set, if it is a pivot
+%         12: [0,1] indicates if the current probe set is a pivot
+%         13: [0,1] indicates if the current probe set is paired with a pivot
+%         14: nb of probe sets that do not target the assigned gene but target
+%             a common gene with the current probe set        
+%         15: nb of genes that are targetted by probe sets that do not target the
+%             assigned gene
+%         16: nb of genes that are targetted by other probe set with a nb
+%             of probes higher than the number of probes of the current probe set that
+%             target the assigned gene
+%         17: ClassRank
+%         18: and beyond: nb of  other genes targetted with all possible nb of probes
+%
+%   DISPLAY_PS
+%      display FIG25a,FIG25b
+%
+%   DIST_PROBENB
+%      calculate the percentage of different source and gene types
+%
 
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
@@ -135,13 +228,12 @@ global K
 ChipPos=strmatch(sprintf('m%u',ChipRank),K.chip.myName,'exact');
 ProbeNb=K.chip.probeNb(ChipPos);
 NetNb=length(NetRanks);
-%DirName=fullfile(K.dir.amcResults,'ps_assignation');
 DirName=fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank));
 cd(DirName)
 %LOAD NewPs IF EXISTS OR CONSTRUCT IT
 FileName=sprintf('m%u_n%u_netnb%u_probenb%u_newps.mat',ChipRank,NetRanks(1),NetNb,ProbeNbLimit);
 
-%% STEP1
+%% STEP1 CONSTRUCT NEWPS
 if isempty(find(StepRanks==1))
     if exist(FileName,'file')
         eval(sprintf('load %s',FileName))
@@ -195,7 +287,7 @@ else
     eval(sprintf('save %s NewPs PsBy Genes',FileName))
 end
 
-%% STEP2
+%% STEP2 CALCULATE LIMITS
 if ~isempty(find(StepRanks==2))    
     %RECOVER THE CURRENT CORR,ANTI &PV VALUES FOR CURRENT SIM
     cd(DirName)
@@ -219,7 +311,7 @@ if ~isempty(find(StepRanks==2))
     eval(sprintf('save %s NotFound',sprintf('m%u_dup_probenb%u_notfound.mat',ChipRank,ProbeNbLimit)));
 end
 
-%% STEP3
+%% STEP3 COMPLETE NEWPS
 if ~isempty(find(StepRanks==3))     
     ProcessNet=zeros(NetNb,1);
     for NetL=1:NetNb
@@ -260,7 +352,7 @@ if ~isempty(find(StepRanks==3))
     eval(sprintf('save %s NewPs Genes PsBy',FileName))
 end
 
-%% STEP4
+%% STEP4 CONSTRUCT PSBY
 if ~isempty(find(StepRanks==4))    
     %process ps with targets only in out
     'CONSTRUCT_PSBY'
@@ -270,7 +362,7 @@ if ~isempty(find(StepRanks==4))
     eval(sprintf('save %s NewPs Genes PsBy',FileName))
 end
 
-%% STEP5
+%% STEP5 STAT ON THE THIRD EDGE IN PROBE SET TRIANGLE
 if ~isempty(find(StepRanks==5))
      'STAT ON THIRD EDGE IN TRIANGLE'
      %if DisplayFlag
@@ -293,7 +385,7 @@ if ~isempty(find(StepRanks==5))
      end
 end
 
-%% STEP6
+%% STEP6 CONSTRUCT PSMATRIX
 if ~isempty(find(StepRanks==6))
     for FreqL=1:length(NetFrequencies)
         if SumFlag
@@ -311,7 +403,7 @@ if ~isempty(find(StepRanks==6))
     end
 end
 
-%% STEP7
+%% STEP7 FIGURES 36 TO 38
 if ~isempty(find(StepRanks==7))
 
     FigRank=36;
@@ -656,33 +748,137 @@ if ~isempty(find(StepRanks==7))
     close(h)
 end
 
+%% STEP8 WRITE TXT FILES
+if ~isempty(find(StepRanks==8))
+    %load probe set names
+    cd(K.dir.rawdata)
+    PsName=textread(sprintf('m%u_probeset.txt',ChipRank),'%s');
+    AllPsPair=[];
+    PsPair=[];
+    GeneId={};
+    NetFrequencies=[1,25,50,75,100];
+    cd(DirName)
+    for FreqL=1:length(NetFrequencies)
+        StatFileName=sprintf('m%u_n%u_netnb%u_probenb%u_newps_stat_netprc%03u_pvcorr%u',ChipRank,NetRanks(1),NetNb,ProbeNbLimit,NetFrequencies(FreqL),PvCorrRanks);
+        eval(sprintf('load %s',StatFileName))
+
+        %write PsMatrix and gene ids
+        if FreqL==1
+            fid=fopen(sprintf('m%u_n%u_netnb%u_probenb%u_pvcorr%u_geneid.txt',ChipRank,NetRanks(1),NetNb,ProbeNbLimit,PvCorrRanks),'w');
+            for GeneL=1:length(Genes.name)
+                fprintf(fid,'%s\n',Genes.name{GeneL});
+            end
+            fclose(fid)
+        end
+        fid=fopen(sprintf('m%u_n%u_netnb%u_probenb%u_netprc%03u_pvcorr%u_psmatrix.txt',ChipRank,NetRanks(1),NetNb,ProbeNbLimit,NetFrequencies(FreqL),PvCorrRanks),'w');
+        Out=[repmat('%u\t',1,size(PsMatrix,2)-1),'%u\n'],
+        for PsL=1:size(PsMatrix,1)
+            fprintf(fid,Out,PsMatrix(PsL,:));
+        end
+        fclose(fid)
+
+        PsMade=zeros(size(PsMatrix,1),1);
+        %process only classes where exist probe set pairs
+        Pos=find(PsMatrix(:,17)>=3& PsMatrix(:,17)<7);
+        for PsL=1:length(Pos)
+            if PsMade(Pos(PsL))==0
+                %recover all the probe sets related to the parent of the currently proccessed
+                %probe set
+                CurrPsRanks=find(PsMatrix(:,9)==PsMatrix(Pos(PsL),9));
+                %scan all the possible pair of these probe sets
+                for PsL1=1:length(CurrPsRanks)-1
+                    PsRank1=CurrPsRanks(PsL1);
+                    IsPivot1=0;
+                    if PsMatrix(PsRank1,12)==1
+                        %groups of transcripts targetted by the first probe set if it is a
+                        %pivot probe set
+                        Grps1=find(dec2bin(PsMatrix(PsRank1,11))=='1');
+                        IsPivot1=1;
+                    end
+                    for PsL2=PsL1+1:length(CurrPsRanks)
+                        PsRank2=CurrPsRanks(PsL2);
+                        %test if the current pair exist
+                        try
+                            PairPos=find(PsPair(:,1)==min(PsRank1,PsRank2)&PsPair(:,2)==max(PsRank1,PsRank2));
+                        catch
+                            PairPos=[];
+                        end
+                        if isempty(PairPos)
+                            PairPos=size(PsPair,1)+1;                          
+                            GeneId{PairPos}=Genes.name{PsMatrix(Pos(PsL),1)};                            
+                            PsPair(PairPos,:)=[min(PsRank1,PsRank2),max(PsRank1,PsRank2),zeros(1,17)];
+                            PsPair(PairPos,13)=PsMatrix(PsRank1,17);
+                            PsPair(PairPos,14)=PsMatrix(PsRank1,5);
+                            PsPair(PairPos,15)=PsMatrix(PsRank1,6);
+                            PsPair(PairPos,16)=PsMatrix(PsRank1,7);
+                            PsPair(PairPos,17)=PsMatrix(PsRank2,5);
+                            PsPair(PairPos,18)=PsMatrix(PsRank2,6);
+                            PsPair(PairPos,19)=PsMatrix(PsRank2,7);
+                        end
+                        %Presence of ps pair in the current frequency
+                        PsPair(PairPos,2+(FreqL-1)*2+1)=1;
+                        IsPivot2=0;
+                        if PsMatrix(PsRank2,12)==1
+                            %groups of transcripts targetted by the second probe set if it
+                            %is a pivot probe set
+                            Grps2=find(dec2bin(PsMatrix(PsRank2,11))=='1');
+                            IsPivot2=1;
+                        end
+                        %find if the two current probe set are a pair which target the same
+                        %group of transcripts
+                        if IsPivot1==0&IsPivot2==0
+                            if PsMatrix(PsRank1,10)==PsMatrix(PsRank2,10)
+                                PsPair(PairPos,2+(FreqL-1)*2+2)=1;
+                            end
+                        elseif IsPivot1==1 & IsPivot2==0
+                            if ~isempty(find(Grps1==PsMatrix(CurrPsRanks(PsL2),10)))
+                                PsPair(PairPos,2+(FreqL-1)*2+2)=2;
+                            end
+                        elseif IsPivot2==1 & IsPIvot1==0
+                            if ~isempty(find(Grps2==PsMatrix(CurrPsRanks(PsL1),10)))
+                                PsPair(PairPos,2+(FreqL-1)*2+2)=2;
+                            end
+                        else
+                            if ~isempty(intersect(Grps1,Grps2))
+                                PsPair(PairPos,2+(FreqL-1)*2+2)=3;
+                            end
+                        end
+                    end
+                end
+                PsMade(CurrPsRanks)=1;
+            end
+        end
+    end
+    'stop'
+    %write results (PsPair)
+    %Order on Gene ID
+    [GeneId,SortOrder]=sort(GeneId);    
+    PsPair=PsPair(SortOrder,:);
+    %mark pair not present in all net frequencies (~1%)    
+    MarkPos=find(PsPair(:,3)==0|PsPair(:,5)==0|PsPair(:,7)==0|PsPair(:,9)==0|PsPair(:,11)==0);
+    Mark=repmat('v',size(PsPair,1),1);
+    Mark(MarkPos)='*';    
+    fid=fopen(sprintf('m%u_n%u_netnb%u_probenb%u_pvcorr%u_pspair.txt',ChipRank,NetRanks(1),NetNb,ProbeNbLimit,PvCorrRanks),'w');
+    Out=[repmat('%s\t',1,3),repmat('%u\t',1,14),'%s\n'];
+    
+    for PsL=1:size(PsPair,1)
+        fprintf(fid,Out,GeneId{PsL},PsName{PsPair(PsL,1)},PsName{PsPair(PsL,2)},PsPair(PsL,[1,2,4:2:12,13:19]),Mark(PsL));
+    end
+    fclose(fid)        
+end
 
 
+%% LOADSIM
+% INPUT PARAMETERS
+% 1   ChipRank : the rank of chip set model
+% 2   NetRanks : a list of network rank
+% 3 PvCorrRanks: five series of p-values are calculated (on edges with
+%                corr>=0,10,20,30,40,50)
+% 4   FileName : the common part of or file name to be loaded
 
-
-
-
-
-
-%% LOAD SIM
-%PARAMETERS
-%ChipRank : the rank of chip set model
-%NetRanks : a list of network rank
-%PvCorrRanks: five series of p-values are calculated (on edges with
-%       corr>=0,10,20,30,40,50)
-
-%FileName : the common part of or file name to be loaded
 %OUTPUT
-%AllVal : all CORR,ANTi and PV values of the networks
-%Sim : The last loaded Sim
-
-%
-%VERSION
-%V2     2010-07-14 : change selection process. No longer use mean, std
-%values of CORR, ANTI and PV, but do a selection on each individual values
-%and count the number of succes
-%V1     2010-03-03 : first version
-
+% AllVal : all CORR,ANTI and PV (p-values) of the networks
+%    Sim : The last loaded Sim
 function [AllVal,Sim]=LOADSIM(ChipRank,NetRanks,PvCorrRanks,FileName)
 
 NetNb=length(NetRanks);
@@ -1267,7 +1463,6 @@ Stat.badLinks=[];
 %single probe sets that are common to these two groups are taken away and
 %considered as forming a hubs which is in relation with the two groups.
 Stat.hubs=[];
-
 %LinkedPs: pairs of probe set that belong to the same group
 %LinkedPs{1}: they target a gene with a number of probe smaller than the number of probes
 %             of the current ps targeting the assigned gene
@@ -3122,7 +3317,7 @@ end
 %% DIST_PROBENB
 function PsType=DIST_PROBENB(PsMatrix,CurrPsRanks,PsType,ClassRank)
 
-% DISTRIBUTION TARGET TYPE, GENE TYPE
+% PERCENTAGE OF DIFFERENT TARGET TYPES AND GENE TYPES
 for i=1:3
     Pos=find(PsMatrix(CurrPsRanks,3)==i);
     PsType(ClassRank,i)=round(length(Pos)*100/length(CurrPsRanks));
