@@ -4,10 +4,23 @@
 
 % CALCULAT_PEARSON calculates the Pearson's correlation coefficient on all pairs of probe
 % sets referenced in dup files
- 
+% 
 %INPUT PARAMETERS
-% 1     ModelRank:
-% 2 ProbeNbLimit:
+% 1      Species: species
+% 2     ChipRank: chip rank
+% 3 ProbeNbLimit: minimal number of probes targeting a gene (used to make
+%                 a bipartition of genes)
+% 4     TestFlag: if =1 CORR, ANTI and PV distributions are calculated on all
+%                 categories to study their differential properties;
+%                 if =0 CORR, ANTI and PV distributions are calculated only on single
+%                 category to find corresponding test limits used to determine if a 
+%                 particular pair of probe set must be considered as similar(that is
+%                 targeting the same group of transcript(s)
+% 5 NotFoundFlag: indicates that duplicates not found in a first round are processed
+%                 (TestFlag is equal to 0 in this case)
+% 6     IdemFlag: indicates if probe set order is identical in file used by PsawnPy et in
+%                 networks (CVM)
+
 
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
@@ -108,9 +121,9 @@ end
 
 function [FirstPsRank,SndPsRank,RankCorr,SignalCorr]=PEARSON(ChipRank,Dup,NetPs)
 global K
-DataDir=fullfile(K.dir.net,sprintf('m%03u',ChipRank),'data','experiment');
+DataDir=fullfile(K.dir.net,sprintf('m%u',ChipRank),'data','experiment');
 cd(DataDir)
-load DataRanks
+load(sprintf('m%u_dataranks.mat',ChipRank))
 FirstPsRank=[];
 SndPsRank=[];
 RankCorr=[];

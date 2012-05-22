@@ -21,6 +21,7 @@
 %              list of corresponding rank,..
 %              lists of targeted exons (one for each targeting probeset,...
 %              lists of number of probes in each exon,...
+%              last group rank,... 
 %              list of grouped targeted exons (some exons overlap each other),...
 %              number of probes in each group,...
 %              list of targeted transcripts,...
@@ -33,6 +34,7 @@
 %              [9079]
 %              {{'ENSMUSE00000662385' 'ENSMUSE00000653296' 'ENSMUSE00000307025'}
 %              {[6 6 2 6 6]}
+%              7 
 %              {[8 6 7]}
 %              {[6 6 2]}
 %              {[1,2,3]}
@@ -50,7 +52,10 @@
 % a PsNb x n cell with the following structure:
 %
 % EPsInfo{PsRank}{ProbeNb}.exonNames
+% EPsInfo{PsRank}{ProbeNb}.exonRanks
 % EPsInfo{PsRank}{ProbeNb}.exonProbeNbs
+% EPsInfo{PsRank}{ProbeNb}.lastExon
+% EPsInfo{PsRank}{ProbeNb}.lastGroup
 % EPsInfo{PsRank}{ProbeNb}.groupRanks
 % EPsInfo{PsRank}{ProbeNb}.groupProbeNbs
 % EPsInfo{PsRank}{ProbeNb}.transcripts
@@ -70,10 +75,13 @@
 %          EPsNames: cell(n+1,1) containing the list of probeset names of each input file
 %  EPsRanks=PsRanks: cell(n+1,1) containing the list of probeset ranks of each input file
 %        EExonNames: cell(n+1,1) containing the list of exon names of each input file
+%        EExonRank: cell(n+1,1) containing the list of exon ranks of each input file
 %     EExonProbeNbs: cell(n+1,1) containing the list of probeset names of each input file
+%        ELastExon: a PsNbx1 matrix containing the rank of the last exon
+%        ELastGroup: a PsNbx1 matrix containing the rank of the last group of exons
 %       EGroupRanks: cell(n+1,1) containing the list of grouped exons
 %    EGroupProbeNbs: cell(n+1,1) containing the list of number of probes targeting grouped
-%                    exons
+%                    exons (overlaping exons)
 %       ETargetedTs: cell(n+1,1) containing the list of targeted transcripts
 %    ENotTargetedTs: cell(n+1,1) containing the list of not targeted transcripts
 
@@ -147,14 +155,21 @@ for TypeL=1:2
             %matrix of nb of probes not targeting the exons (up + down + inintron )
             NotInExonProbeNb{ProbeNbL}={};
             if exist(fullfile(K.dir.pydata,Species,'txt',sprintf('%s_m%u_probesets_by_gene_%02u.txt',Type,ChipRank,ProbeNbL-1)),'file')
-                [GeneName{ProbeNbL},PsNames{ProbeNbL},PsRanks{ProbeNbL},...
-                    ExonName{ProbeNbL},ExonProbeNbs{ProbeNbL},GroupRanks{ProbeNbL},GroupProbeNbs{ProbeNbL},...
-                    TargetedT{ProbeNbL},NotTargetedT{ProbeNbL},NotInExonProbeNb{ProbeNbL},InGeneProbeNb{ProbeNbL}]=textread(sprintf('%s_m%u_probesets_by_gene_%02u.txt',Type,ChipRank,ProbeNbL-1),'%s%s%s%s%s%s%s%s%s%s%s','delimiter','\t','bufsize',40000);
-                ProbeNb=min(PROBE_NB,ProbeNbL);
+                if TypeL==1
+                    [GeneName{ProbeNbL},PsNames{ProbeNbL},PsRanks{ProbeNbL},...
+                        ExonName{ProbeNbL},ExonRanks{ProbeNbL},ExonProbeNbs{ProbeNbL},LastExon{ProbeNbL},LastGroup{ProbeNbL},GroupRanks{ProbeNbL},GroupProbeNbs{ProbeNbL},...
+                        TargetedT{ProbeNbL},NotTargetedT{ProbeNbL},NotInExonProbeNb{ProbeNbL},InGeneProbeNb{ProbeNbL}]=textread(sprintf('%s_m%u_probesets_by_gene_%02u.txt',Type,ChipRank,ProbeNbL-1),'%s%s%s%s%s%s%u%u%s%s%s%s%s%s','delimiter','\t','bufsize',40000);
+                    ProbeNb=min(PROBE_NB,ProbeNbL);
+                else
+                    [GeneName{ProbeNbL},PsNames{ProbeNbL},PsRanks{ProbeNbL},...
+                        ExonName{ProbeNbL},ExonProbeNbs{ProbeNbL},LastExon{ProbeNbL},LastGroup{ProbeNbL},GroupRanks{ProbeNbL},GroupProbeNbs{ProbeNbL},...
+                        TargetedT{ProbeNbL},NotTargetedT{ProbeNbL},NotInExonProbeNb{ProbeNbL},InGeneProbeNb{ProbeNbL}]=textread(sprintf('%s_m%u_probesets_by_gene_%02u.txt',Type,ChipRank,ProbeNbL-1),'%s%s%s%s%s%u%u%s%s%s%s%s%s','delimiter','\t','bufsize',40000);
+                    ProbeNb=min(PROBE_NB,ProbeNbL);
+                end
             end
         end
         %transform probeset indexes into ranks
-        for ProbeNbL=1:ProbeNb
+        for ProbeNbL=1:ProbeNb        
             if ~isempty(PsRanks{ProbeNbL})
                 for GeneL=1:length(PsRanks{ProbeNbL})
                     PsRanks{ProbeNbL}{GeneL}=eval(PsRanks{ProbeNbL}{GeneL})+1;
@@ -163,11 +178,54 @@ for TypeL=1:2
         end
 
         % recover information in matrix form with eval
-        % which transcform string into cell
+        % which transform string into cell
         for ProbeNbL=1:ProbeNb
             if ~isempty(ExonProbeNbs{ProbeNbL})
                 for GeneL=1:length(ExonProbeNbs{ProbeNbL})
                     ExonProbeNbs{ProbeNbL}{GeneL}=eval(ExonProbeNbs{ProbeNbL}{GeneL});
+                end
+            end
+        end
+        
+        ExonNames=cell(size(ExonName));
+        for ProbeNbL=1:ProbeNb
+            if ~isempty(ExonName{ProbeNbL})
+                ExonNames{ProbeNbL}=cell(size(ExonName{ProbeNbL}));
+                for GeneL=1:length(ExonName{ProbeNbL})
+                    ExonNames{ProbeNbL}{GeneL}=eval(ExonName{ProbeNbL}{GeneL});
+                end
+            end
+        end
+        
+        if TypeL==2
+            ExonRanks=cell(size(ExonName));
+        end
+        for ProbeNbL=1:ProbeNb
+            if TypeL==1
+                if ~isempty(ExonRanks{ProbeNbL})
+                    for GeneL=1:length(ExonRanks{ProbeNbL})
+                        ExonRanks{ProbeNbL}{GeneL}=eval(ExonRanks{ProbeNbL}{GeneL});
+                    end
+                end
+            else
+                if ~isempty(ExonNames{ProbeNbL})
+                    for GeneL=1:length(ExonNames{ProbeNbL})
+                        CurrExonNames=ExonNames{ProbeNbL}{GeneL};
+                        for PsL=1:length(CurrExonNames)
+                            CurrExonRanks=zeros(1,length(CurrExonNames{PsL}));
+                            for ExonL=1:length(CurrExonNames{PsL})
+                                CurrExonRank=regexp(CurrExonNames{PsL}{ExonL},'(?<=.exon)\d+','match');
+                                try
+                                    CurrExonRanks(ExonL)=str2num(CurrExonRank{1});
+                                catch
+                                    CurrExonRanks(ExonL)=-1;
+                                end
+                            end
+                            ExonRanks{ProbeNbL}{GeneL}{PsL}=CurrExonRanks;
+                        end
+                    end
+                else
+                    ExonRanks{ProbeNbL}{GeneL}=[];
                 end
             end
         end
@@ -186,17 +244,7 @@ for TypeL=1:2
                     GroupProbeNbs{ProbeNbL}{GeneL}=eval(GroupProbeNbs{ProbeNbL}{GeneL});
                 end
             end
-        end
-
-        ExonNames=cell(size(ExonName));
-        for ProbeNbL=1:ProbeNb
-            if ~isempty(ExonName{ProbeNbL})
-                ExonNames{ProbeNbL}=cell(size(ExonName{ProbeNbL}));
-                for GeneL=1:length(ExonName{ProbeNbL})
-                    ExonNames{ProbeNbL}{GeneL}=eval(ExonName{ProbeNbL}{GeneL});
-                end
-            end
-        end
+        end        
 
         TargetedTs=cell(size(TargetedT));
         for ProbeNbL=1:ProbeNb
@@ -258,18 +306,37 @@ for TypeL=1:2
             sprintf('PsNb in networks: %u , in PSAWNpy: %u',NetPsNb,PsNb)
         end
         %synthetize results by indexing on probesets
-        PsInfo=cell(PsNb,1);
+
+        PsInfo=[];
+        for PsL=1:PsNb
+            PsInfo.geneNames{PsL}=cell(ProbeNb,1);
+            PsInfo.exonNames{PsL}=cell(ProbeNb,1);
+            PsInfo.exonRanks{PsL}=cell(ProbeNb,1);
+            PsInfo.exonProbeNbs{PsL}=cell(ProbeNb,1);
+            PsInfo.lastExon{PsL}=cell(ProbeNb,1);
+            PsInfo.lastGroup{PsL}=cell(ProbeNb,1);
+            PsInfo.groupRanks{PsL}=cell(ProbeNb,1);
+            PsInfo.groupProbeNbs{PsL}=cell(ProbeNb,1);
+            PsInfo.transcripts{PsL}=cell(ProbeNb,1);
+            PsInfo.notTranscripts{PsL}=cell(ProbeNb,1);
+            PsInfo.inGeneProbeNbs{PsL}=cell(ProbeNb,1);
+            PsInfo.notInExonProbeNbs{PsL}=cell(ProbeNb,1);
+        end
+            
         for PsL=1:PsNb
             for ProbeNbL=1:ProbeNb
-                PsInfo{PsL}{ProbeNbL}.geneNames={};
-                PsInfo{PsL}{ProbeNbL}.exonNames={};
-                PsInfo{PsL}{ProbeNbL}.exonProbeNbs={};
-                PsInfo{PsL}{ProbeNbL}.groupRanks={};
-                PsInfo{PsL}{ProbeNbL}.groupProbeNbs={};
-                PsInfo{PsL}{ProbeNbL}.transcripts={};
-                PsInfo{PsL}{ProbeNbL}.notTranscripts={};
-                PsInfo{PsL}{ProbeNbL}.inGeneProbeNbs=[];
-                PsInfo{PsL}{ProbeNbL}.notInExonProbeNbs=[];
+                PsInfo.geneNames{PsL}{ProbeNbL}={};
+                PsInfo.exonNames{PsL}{ProbeNbL}={};
+                PsInfo.exonRanks{PsL}{ProbeNbL}={};
+                PsInfo.exonProbeNbs{PsL}{ProbeNbL}={};
+                PsInfo.lastExon{PsL}{ProbeNbL}=[];
+                PsInfo.lastGroup{PsL}{ProbeNbL}=[];
+                PsInfo.groupRanks{PsL}{ProbeNbL}={};
+                PsInfo.groupProbeNbs{PsL}{ProbeNbL}={};
+                PsInfo.transcripts{PsL}{ProbeNbL}={};
+                PsInfo.notTranscripts{PsL}{ProbeNbL}={};
+                PsInfo.inGeneProbeNbs{PsL}{ProbeNbL}=[];
+                PsInfo.notInExonProbeNbs{PsL}{ProbeNbL}=[];
             end
         end
 
@@ -295,39 +362,55 @@ for TypeL=1:2
                     %process all the probeset targeting the current gene
                     for PsL=1:length(PsRanks{ProbeNbL}{GeneL})
                         CurrPsRank=PsRanks{ProbeNbL}{GeneL}(PsL);                        
-                        PsInfo{CurrPsRank}{ProbeNbL}.geneNames{end+1}=GeneName{ProbeNbL}{GeneL};
+                        PsInfo.geneNames{CurrPsRank}{ProbeNbL}{end+1}=GeneName{ProbeNbL}{GeneL};
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.exonNames{end+1}=ExonNames{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.exonNames{CurrPsRank}{ProbeNbL}{end+1}=ExonNames{ProbeNbL}{GeneL}{PsL};
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.exonNames{end+1}=[];
+                            PsInfo.exonNames{CurrPsRank}{ProbeNbL}{end+1}=[];
                         end
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.exonProbeNbs{end+1}=ExonProbeNbs{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.exonRanks{CurrPsRank}{ProbeNbL}{end+1}=ExonRanks{ProbeNbL}{GeneL}{PsL};
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.exonProbeNbs{end+1}=[];
+                            PsInfo.exonRanks{CurrPsRank}{ProbeNbL}{end+1}=[];
+                        end
+
+                        try
+                            PsInfo.exonProbeNbs{CurrPsRank}{ProbeNbL}{end+1}=ExonProbeNbs{ProbeNbL}{GeneL}{PsL};
+                        catch
+                            PsInfo.exonProbeNbs{CurrPsRank}{ProbeNbL}{end+1}=[];
                         end
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.groupRanks{end+1}=GroupRanks{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.lastExon{CurrPsRank}{ProbeNbL}(end+1)=LastExon{ProbeNbL}(GeneL);
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.groupRanks{end+1}=[];
+                            PsInfo.lastExon{CurrPsRank}{ProbeNbL}(end+1)=-1;
                         end
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.groupProbeNbs{end+1}=GroupProbeNbs{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.lastGroup{CurrPsRank}{ProbeNbL}(end+1)=LastGroup{ProbeNbL}(GeneL);
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.groupProbeNbs{end+1}=[];
+                            PsInfo.lastGroup{CurrPsRank}{ProbeNbL}(end+1)=-1;
                         end
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.transcripts{end+1}=TargetedTs{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.groupRanks{CurrPsRank}{ProbeNbL}{end+1}=GroupRanks{ProbeNbL}{GeneL}{PsL};
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.transcripts{end+1}=[];
+                            PsInfo.groupRanks{CurrPsRank}{ProbeNbL}{end+1}=[];
                         end
                         try
-                            PsInfo{CurrPsRank}{ProbeNbL}.notTranscripts{end+1}=NotTargetedTs{ProbeNbL}{GeneL}{PsL};
+                            PsInfo.groupProbeNbs{CurrPsRank}{ProbeNbL}{end+1}=GroupProbeNbs{ProbeNbL}{GeneL}{PsL};
                         catch
-                            PsInfo{CurrPsRank}{ProbeNbL}.notTranscripts{end+1}=[];
+                            PsInfo.groupProbeNbs{CurrPsRank}{ProbeNbL}{end+1}=[];
                         end
-                        PsInfo{CurrPsRank}{ProbeNbL}.inGeneProbeNbs(end+1)=InGeneProbeNbs{ProbeNbL}{GeneL}(PsL);
-                        PsInfo{CurrPsRank}{ProbeNbL}.notInExonProbeNbs(end+1)=NotInExonProbeNbs{ProbeNbL}{GeneL}(PsL);
+                        try
+                            PsInfo.transcripts{CurrPsRank}{ProbeNbL}{end+1}=TargetedTs{ProbeNbL}{GeneL}{PsL};
+                        catch
+                            PsInfo.transcripts{CurrPsRank}{ProbeNbL}{end+1}=[];
+                        end
+                        try
+                            PsInfo.notTranscripts{CurrPsRank}{ProbeNbL}{end+1}=NotTargetedTs{ProbeNbL}{GeneL}{PsL};
+                        catch
+                            PsInfo.notTranscripts{CurrPsRank}{ProbeNbL}{end+1}=[];
+                        end
+                        PsInfo.inGeneProbeNbs{CurrPsRank}{ProbeNbL}(end+1)=InGeneProbeNbs{ProbeNbL}{GeneL}(PsL);
+                        PsInfo.notInExonProbeNbs{CurrPsRank}{ProbeNbL}(end+1)=NotInExonProbeNbs{ProbeNbL}{GeneL}(PsL);
                     end
                 end
             end
@@ -338,17 +421,17 @@ for TypeL=1:2
             %recover GeneNames that are targeted at least in one exon
             TargetedGeneNames={};
             for ProbeNbL=2:ProbeNb
-                TargetedGeneNames=[TargetedGeneNames;PsInfo{PsL}{ProbeNbL}.geneNames'];
+                TargetedGeneNames=[TargetedGeneNames;PsInfo.geneNames{PsL}{ProbeNbL}'];
             end
             TargetedGeneNames=unique(TargetedGeneNames);
             for ProbeNbL=2:ProbeNb
-                if ~isempty(PsInfo{PsL}{ProbeNbL}.geneNames)
-                    for GeneL=1:length(PsInfo{PsL}{ProbeNbL}.geneNames)
-                        CurrGeneName=PsInfo{PsL}{ProbeNbL}.geneNames{GeneL};
+                if ~isempty(PsInfo.geneNames{PsL}{ProbeNbL})
+                    for GeneL=1:length(PsInfo.geneNames{PsL}{ProbeNbL})
+                        CurrGeneName=PsInfo.geneNames{PsL}{ProbeNbL}{GeneL};
                         Pos=strmatch(CurrGeneName,TargetedGeneNames,'exact');
                         if ~isempty(Pos)
-                            Pos=strmatch(CurrGeneName,PsInfo{PsL}{ProbeNbL}.geneNames,'exact');
-                            PsInfo{PsL}{ProbeNbL}.notInExonProbeNbs(Pos)=0;
+                            Pos=strmatch(CurrGeneName,PsInfo.geneNames{PsL}{ProbeNbL},'exact');
+                            PsInfo.notInExonProbeNbs{PsL}{ProbeNbL}(Pos)=0;
                         end
                     end
                 end
@@ -363,17 +446,21 @@ for TypeL=1:2
             ETargetedGenes=TargetedGenes;
             ETargetingPsRanks=TargetingPsRanks;
             EPsNames=PsNames;
+            EExonRanks=ExonRanks;
             EPsRanks=PsRanks;
             EExonNames=ExonNames;
             EExonProbeNbs=ExonProbeNbs;
+            ELastExon=LastExon;
+            ELastGroup=LastGroup;
             EGroupRanks=GroupRanks;
             EGroupProbeNbs=GroupProbeNbs;
             ETargetedTs=TargetedTs;
             ENotTargetedTs=NotTargetedTs;
             EPsInfo=PsInfo;
-            clear GeneName GeneNames TargetedGenes TargetingPsRanks PsNames PsRanks ExonNames ExonProbeNbs GroupRanks GroupProbeNbs TargetedTs NotTargetedTs PsInfo TargetedT NotTargetedT
-            eval(sprintf('save m%u_probesets_by_%s_gene EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks EExonNames EExonProbeNbs EGroupRanks EGroupProbeNbs ETargetedTs ENotTargetedTs EPsInfo',ChipRank,Type))
-            clear EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks EExonNames EExonProbeNbs EGroupRanks EGroupProbeNbs ETargetedTs ENotTargetedTs EPsInfo
+            eval(sprintf('save m%u_probesets_by_%s_gene EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks EExonNames EExonRanks EExonProbeNbs ELastExon ELastGroup EGroupRanks EGroupProbeNbs ETargetedTs ENotTargetedTs',ChipRank,Type))
+            eval(sprintf('save m%u_%s_psinfo EPsInfo',ChipRank,Type))
+            clear GeneName GeneNames TargetedGenes TargetingPsRanks PsNames PsRanks ExonNames ExonRanks ExonProbeNbs LastExon LastGroup GroupRanks GroupProbeNbs TargetedTs NotTargetedTs PsInfo TargetedT NotTargetedT           
+            clear EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks EExonNames EExonRanks EExonProbeNbs ELastExon ELastGroup EGroupRanks EGroupProbeNbs ETargetedTs ENotTargetedTs EPsInfo
 
         else
             AGeneName=GeneName;
@@ -383,15 +470,19 @@ for TypeL=1:2
             APsNames=PsNames;
             APsRanks=PsRanks;
             AExonNames=ExonNames;
+            AExonRanks=ExonRanks;
             AExonProbeNbs=ExonProbeNbs;
+            ALastExon=LastExon;            
+            ALastGroup=LastGroup;            
             AGroupRanks=GroupRanks;
             AGroupProbeNbs=GroupProbeNbs;
             ATargetedTs=TargetedTs;
             ANotTargetedTs=NotTargetedTs;
             APsInfo=PsInfo;
-            clear GeneName GeneNames TargetedGenes TargetingPsRanks PsNames PsRanks ExonNames ExonProbeNbs GroupRanks GroupProbeNbs TargetedTs NotTargetedTs PsInfo TargetedT NotTargetedT
-            eval(sprintf('save m%u_probesets_by_%s_gene AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonProbeNbs AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs APsInfo',ChipRank,Type))
-            clear AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonProbeNbs AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs APsInfo
+            eval(sprintf('save m%u_probesets_by_%s_gene AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonRanks AExonProbeNbs ALastExon ALastGroup AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs',ChipRank,Type))
+            eval(sprintf('save m%u_%s_psinfo APsInfo',ChipRank,Type))
+            clear GeneName GeneNames TargetedGenes TargetingPsRanks PsNames PsRanks ExonNames ExonRanks ExonProbeNbs LastExon LastGroup GroupRanks GroupProbeNbs TargetedTs NotTargetedTs PsInfo TargetedT NotTargetedT
+            clear AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonRanks AExonProbeNbs ALastExon ALastGroup AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs APsInfo
         end
     end
 end

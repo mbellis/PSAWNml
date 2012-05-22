@@ -5,43 +5,27 @@
 % CALCULATE_LIMITS uses several small networks (1024 comparisons : 32x32 biol cond)
 % to find the distributions of p-value of overlaping between neighbourhood and of
 % positive and negative correlation of probe sets that target the same groups of transcripts
-
+%
 %INPUT PARAMETERS
-
-% 1        ModelRank: chip model rank
-% 2          FigList: indicates figures that are to be displayed (set it to [] in order
-% 3 FirstNetRankList: first list of networks
-% 4       PvCorrRank: pv(overlap) is calculated for corr limit >[0,40,50,60]. PvCorrRank
-%                     indicates the corr limit to be used, by giving its index in
-%                     the corr list(,[0,40,50,60])
-% 5         MeanFlag: indicates if limit is calculated from mean of four values (single and
-%                     multiple targeted genes, and InSim and OutSim) or only from single
-%                     targeted genes and InSim.
-% 6          ValFlag: indicates if all values of corr, anti and pv of each pair are used, or
-%                     only a single derived value (mean - std)
+%
+% 1        Species: species
+% 2       ChipRank: chip model rank
+% 3   ProbeNbLimit: minimal number of probes targeting a gene
+% 4       FigRanks: indicates figures that are to be displayed (set it to [] in order
+% 5  FirstNetRanks: first list of networks
+% 6     PvCorrRank: pv(overlap) is calculated for corr limit >[0,40,50,60]. PvCorrRank
+%                   indicates the corr limit to be used, by giving its index in
+%                   the corr list(,[0,40,50,60])
+% 7        ValFlag: indicates if all values of corr, anti and pv of each pair are used, or
+%                   only a single derived value (mean - std)
+% 8       MeanFlag: indicates if limit is calculated from mean of four values (single and
+%                   multiple targeted genes, and InSim and OutSim) or only from single
+%                   targeted genes and InSim.
 % varargin:
-% 5     NoQlimitFlag: indicates if the second group of network is a set of no qlimit network
-% 6   SndNetRankList: second list of networks
-
-% FIGURES
-% LimitLim is a list of limits calculated for each pair of probe sets which have a significative
-% corr within x networks (5th percentile for corr and 95th percentile for anti and
-% pv(overlap)).
-% LimitVal is a list of all corr, anti and pv(overlap) values for all probe sets which have a
-% significative corr within x networks.
-% FIG1 - Distibution of corr, anti and pv(overlap) in LimitLim for pairs of probe sets that
-%        target a single gene
-% FIG2 - Distibution of corr, anti and pv(overlap) in LimitLim for pairs of probe sets that
-%        target multiple genes
-% FIG3 - Distibution of corr, anti and pv(overlap) in LimitVal for pairs of probe sets that
-%        target a single gene
-% FIG4 - Distibution of corr, anti and pv(overlap) in LimitVal for pairs of probe sets that
-%        target multiple genes
-
-%EXTERNAL FILES
-
-%OUTPUT PARAMETERS
-% 1 Limits
+% 9     NoQlimitFlag: indicates if the second group of network is a set of no qlimit network
+% 10   SndNetRankList: second list of networks
+%
+%FIGURES 30 to 39
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 %                          c) Michel Bellis                                                %
@@ -74,7 +58,7 @@ ChipPos=strmatch(sprintf('m%u',ChipRank),K.chip.myName,'exact');
 PsNb=K.chip.probesetNb(ChipPos);
 ProbeNb=K.chip.probeNb(ChipPos);
 
-if nargin==9
+if nargin==10
     NetRankListNb=2;
     NoQlimitFlag=varargin{1};
     if NoQlimitFlag
@@ -429,10 +413,10 @@ for TypeL=1:2
 end
 
 
-%% FIG15 - Distibution of corr, anti and pv(overlap) in LimitVal for pairs of probe sets that
+%% FIG30 - Distibution of corr, anti and pv(overlap) in LimitVal for pairs of probe sets that
 %        target a single gene (FIG1) or multiple genes (FIG2)
-if ~isempty(find(FigRanks==15))
-    FigRank=15;
+if ~isempty(find(FigRanks==30))
+    FigRank=30;
     CountFlag=1;
     SimVal=[1,2,3];
     SimLabel={'InSim','OutSim','RandSim'};
@@ -449,8 +433,17 @@ if ~isempty(find(FigRanks==15))
             if CountFlag
                 subplot(length(SimVal),4,(SimL-1)*4+1)
                 hold on
-                plot(LimitsNb{TypeL,SimL},'k-')
-                plot(LimitsNb{TypeL,SimL},'k-')
+                for NetL=1:NetNb               
+                    h=bar(NetL,LimitsNb{TypeL,SimL}(NetL));
+                    set(h,'facecolor',Colors(NetL,:))
+                end
+                if NetNb>5
+                    set(gca,'xtick',[1,[5:5:NetNb]])
+                else
+                    set(gca,'xtick',[1:NetNb])
+                end
+                set(gca,'xlim',[0,NetNb+1])
+                set(gca,'tickdir','out')
                 set(gca,'box','on')
                 if SimL==1
                     title('Nb of positive networks')
@@ -469,10 +462,10 @@ if ~isempty(find(FigRanks==15))
                             if ~isempty(AllVal.corr{TypeL,SimVal(SimL)}{NetL});
                                 CurrValues=AllVal.corr{TypeL,SimVal(SimL)}{NetL};
                                 CurrPairNb=length(CurrValues);
-                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:))
+                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:),'linewidth',2)
                                 XVal=CurrValues(max(1,round(CurrPairNb*0.05)));
                                 plot(XVal,0.05,'o','color',Colors(NetL,:))
-                                line([XVal,XVal],[0,0.05],'color',Colors(NetL,:),'linestyle','-.')
+                                line([XVal,XVal],[0,0.05],'color',Colors(NetL,:),'linestyle','-.','linewidth',2)
                             end
                             set(gca,'xlim',[0,100])
                         end
@@ -484,10 +477,10 @@ if ~isempty(find(FigRanks==15))
                             if ~isempty(AllVal.corr{TypeL,SimVal(SimL)}{NetL});
                                 CurrValues=AllVal.anti{TypeL,SimVal(SimL)}{NetL};
                                 CurrPairNb=length(CurrValues);
-                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:))
+                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:),'linewidth',2)
                                 XVal=CurrValues(round(CurrPairNb*0.95));
                                 plot(XVal,0.95,'o','color',Colors(NetL,:))
-                                line([XVal,XVal],[0,0.95],'color',Colors(NetL,:),'linestyle','-.')
+                                line([XVal,XVal],[0,0.95],'color',Colors(NetL,:),'linestyle','-.','linewidth',2)
                             end
                             set(gca,'xlim',[0,100])
                         end
@@ -500,10 +493,10 @@ if ~isempty(find(FigRanks==15))
                             if ~isempty(AllVal.corr{TypeL,SimVal(SimL)}{NetL});
                                 CurrValues=AllVal.pv{TypeL,SimVal(SimL)}{NetL};
                                 CurrPairNb=length(CurrValues);
-                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:))
+                                plot(CurrValues,1/CurrPairNb:1/CurrPairNb:1,'color',Colors(NetL,:),'linewidth',2)
                                 XVal=CurrValues(round(CurrPairNb*0.95));
                                 plot(XVal,0.95,'o','color',Colors(NetL,:))
-                                line([XVal,XVal],[0,0.95],'color',Colors(NetL,:),'linestyle','-.')
+                                line([XVal,XVal],[0,0.95],'color',Colors(NetL,:),'linestyle','-.','linewidth',2)
                             end
                             set(gca,'xlim',[-360,10])
                         end
@@ -541,11 +534,11 @@ if ~isempty(find(FigRanks==15))
     end
 end
 
-%% FIG16 - Limits versus number of networks
+%% FIG31 - Limits versus number of networks
 
 
-if ~isempty(find(FigRanks==16))
-    FigRank=16;
+if ~isempty(find(FigRanks==31))
+    FigRank=31;
     for LimitL=1:2
         if LimitL==1
             CurrLimit=LimitLim;
@@ -762,75 +755,10 @@ end
 
 
 
-%% FIG17
-% caractère très discriminant de pv et de corr
-% on distingue les couples dont la corrélation est nulle dans tous les réseaux (marqués "NoCorr")
-% et les couples dont la corrélation n'est pas nulle dans au moins un réseau (marqués "IsCorr").
-% Pour chacun des couples de ce dernier type on distingue les réseaux dans lesquelles la corrélation est positive
-% et marqués "IsCorr Corr>0" et les réseaux dans lesquels la corrélation est nulle et marqués IsCorr Corr=0.
-% distribution de mean(pv(overlap))
-% Sont aussi considérés les couples de probe set ciblant un même gène et localisés soit dans
-% les exons (sIn), soit en dehors (sOut). Il existe également des
-% couples de probe sets formés aléatoirement, ciblant chacun un gène différent (sRand).
-% Ces trois catégories existent également pour les probe sets
-% ciblant plusieurs gènes et sont notées respectivement mIn, mOut et mRand.
-% Enfin, chaque réseau peut être représenté éventuellement sous
-% deux formes. La forme "qlimit" est celle utilisée habituellement
-% qui a subi l'étape d'elimination des valeurs corr et anti non
-% significatives. La forme no "qlimit" est le réseau ayant conservé
-% toutes les valeurs calculées de corr et de anti ce qui permet de
-% savoir quelles sont les caractéristiques repectives des valeurs
-% qui ont été éliminées ou conservées.
-% Pour ces différentes catégories, plusieurs distributions sont
-% représentées :
-% CADRANT A : mean(pv(overlap)) : moyenne des p-values de la similarité de voisinage de deux probe
-% sets dans plusieurs réseaux (soit tous pour les couples NoCorr soit IsCorr Corr=0 ou IsCorrCorr>0 pour les couples
-% IsCorr)
-% => peu de différences entre catégories s (single, un seul gène
-% cible) et m (multiple, plusieurs gènes ciblés)
-% => grande différence entre IsCorr Corr>0 (pv pratiquement toutes
-% <=Limit.pv) et NoCorr (sigmoide centréé sur pv=0)
-% => situation intermédaire pour IsCorr Corr=0 (pv <0 mais seulement
-% 25<= Limit.pv
-% La distribution des pv(overlap) est identique pour les couples pris au hasard
-% et qui ont une corrélation supérieure à 0.
-% CADRANT B : mean(corr) pour IsCorr Corr>0
-% => ditribution pour In et Out décalée fortement par rapport a
-% Rand (médiane à >60 contre ~40 ; résultats attendus,la corrélation entre probe sets
-% ciblant le même gène doit être plus forte que celle existant
-% entre deux probe sets pris au hasard).
-% Mais
-% CADRANT C : mean(corr) IsCorr Corr=0 et NoCorr dans no qlimit
-% => pour IsCorr même position relative que dans cadrant B, mais
-% courbes décalées vers la gauche (mediane In,Out <=50 et Rand ~35)
-% =>pour NoCorr les médianes sont encore plus basses (~25}
-% CADRANT D : mean(corr) IsCorr Corr>0 dans qlimit vs mean(corr)
-% IsCorr Corr=0 dans no qlimit
-% => autre représentation donnant plus d'informations que dans
-% cadrant C: les moyennes des valeurs éliminées par qlimit sont dans leur
-% grande majorité inférieures aux moyennes des valeurs
-% conservées. Mais la corrélation est toujours forte même et surtout pour les couples Rand ce qui est
-% inattendu. En effet s'il n'est pas surprenant que des couples
-% de probe set ciblant le même gènes aient la même valeur de
-% corrélation quel que soit le réseau (même si certaines sont
-% considérées comme non significatives par l'application de
-% qlimit), il est est en revanche étonnant que quel que soit le
-% réseau considéré, les valeurs brut de corrélation soient
-% très similaire pour des couples de probe sets aléatoires.
-% CONCLUSION
-% Le processus de sélection par qlimit semble très efficace dans le
-% sens où pour les probe sets ciblant le même gène, lorsque les
-% conditions choisies pour construire le réseau font que la
-% corrélation est plus faible (bruit de fond plus important masquant partiellement la corrélation ?)
-% celle ci n'est pas considérée comme significative. Et ceci se
-% répercute sur le voisinage avec des valeurs de pv(overlap) > Limit.pv.
-% La sélection par qlimit est donc sans doute nécessaire pour
-% faire apparaître la structure du réseau (Si l'on se basait sur la
-% forte corrélation des valeurs de corr pour les couples pris au
-% hasard on n'éliminerait aucune valeur et le réseau serait saturé
-% de liens).
-if ~isempty(find(FigRanks==17))
-    FigRank=17;
+%% FIG32
+
+if ~isempty(find(FigRanks==32))
+    FigRank=32;
     h=figure;
     set(gcf,'color',[1,1,1])
     if NetRankListNb==1
@@ -1078,379 +1006,10 @@ if ~isempty(find(FigRanks==17))
 end
 
 
-%% FIG25q
-% Vérification des hypothèses de la figure 1 en groupant les couples en fonction du nombre de replicates significatifs
-% (nombre de réseaux pour lesquels un couple a des valeurs corr significatives).
-% On compare MeanCorr calculé dans les réseaux qlimit et OutMeancorr calculé dans les réseaux no qlimit
-% (on marque de manière spécifique les points pour lesquels pv>-5 dans les réseaux qlimit).
-% Même conclusions que pour Cadrant D de la ficure 1 => très bonne corrélation des valeurs Corr entre les
-% réseaux qlimit et no qlimit, mais valeurs systématiquement plus basses dans réseaux no qlimit.
-% On compare également StdCorr et OutStdCorr : pour StdCorr la moyenne de std diminue quand PosNb diminue
-% (de 4.5 pour PosNb=14 à 2.3 pour PosNb=1), et l'écart type augmente très légèrement (1.5 à 2.1).
-% En revanche dans no qlimit, les variations sont bien plus fortes (mean : 5.5 à 17; std : 3.2 à 1.4).
-% ce qui montre la pertinence du filtrage des valeurs significatives.
-if ~isempty(find(FigRanks==25))& NetRankListNb==2
-    FigRank=25;
-    Colors='rkbcygm';
-    CNb=length(Colors);
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
 
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
-    LetterRank=0;
-    for PlotL=1:2
-        for TypeL=1:2
-            for SimL=1:3
-                h=figure;
-                LetterRank=LetterRank+1;
-                if TypeL==1
-                    if PlotL==1
-                        set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    else
-                        set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    end
-                else
-                    if PlotL==1
-                        set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    else
-                        set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    end
-                end
-                if PlotL==1
-                    Val1=MeanCorr{1}{TypeL}{SimL};
-                    Val2=OutMeanCorr{2}{TypeL}{SimL};
-                else
-                    Val1=StdCorr{1}{TypeL}{SimL};
-                    Val2=OutStdCorr{2}{TypeL}{SimL};
-                end
-                PvPos=MeanPv{1}{TypeL}{SimL}>-5;
-                for RepL=1:NetNb(1)-1
-                    RepPos=RepNb{1}{TypeL}{SimL}==RepL;
-                    CurrPvPos=find(PvPos&RepPos);
-                    if ~isempty(find(RepPos))
-                        subplot(SubNb1,SubNb2,RepL)
-                        hold on
-                        %plot(Val1(PosIndex),Val2(PosIndex),sprintf('%c+',Colors(SimL)),'markersize',3)
-                        plot(Val1(RepPos),Val2(RepPos),sprintf('%c+',Colors(SimL)),'markersize',3)
-                        plot(Val1(CurrPvPos),Val2(CurrPvPos),'bo')
-                        line([0,100],[0,100])
-                        Pears=corrcoef(Val1(RepPos),Val2(RepPos));
-                        CurrMean1=mean(Val1(RepPos));
-                        CurrStd1=std(Val1(RepPos));
-                        CurrMean2=mean(Val2(RepPos));
-                        CurrStd2=std(Val2(RepPos));
-                        if length(Pears)==2
-                            Pears=Pears(2);
-                        end
-
-                        set(gca,'box','on')
-                        if PlotL==1
-                            switch SimL
-                                case 1
-                                    title(sprintf('MeanCorr IN EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 2
-                                    title(sprintf('MeanCorr OUT EXONS RepNb=%u (corr=%.2f\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 3
-                                    title(sprintf('MeanCorr RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                            end
-                            set(gca,'xlim',[0,100])
-                            set(gca,'ylim',[0,100])
-                            xlabel('mean corr in qlimit')
-                            ylabel('mean corr in no qlimit')
-
-                        else
-                            switch SimL
-                                case 1
-                                    title(sprintf('StdCorr IN EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 2
-                                    title(sprintf('StdCorr OUT EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 3
-                                    title(sprintf('StdCorr RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                            end
-                            set(gca,'xlim',[0,20])
-                            set(gca,'ylim',[0,20])
-                            xlabel('std corr in qlimit')
-                            ylabel('std corr in no qlimit')
-                        end
-                    end
-                end
-                set(gcf,'color',[1,1,1])
-                Position=get(gcf,'position');
-                Position(3:4)=[1000,700];
-                set(gcf,'position',Position)
-                try
-                    cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                catch
-                    mkdir(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                    cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                end
-                saveas(h,sprintf('m%u_fig%uq%c.png',ChipRank,FigRank,Letters(letterRank)),'png')
-                close(h)
-            end
-        end
-    end
-end
-
-
-
-
-%% FIG26q
-% Vérification des hypothèses de la figure 1 en groupant les couples en fonction du nombre de replicates significatifs
-% (nombre de réseaux pour lesquels un couple a des valeurs corr significatives).
-% On compare MeanPv et OutMeanPv (TOUS DEUX CALCULÉS SUR LES RÉSEAUX NO QLIMIT CAR L'ON
-% NE PEUT PAS COMPARER DIRECTEMENT PV(OVERLAP) ENTRE LES DEUX TYPES DE RÉSEAUX (dans les
-% réseaux no qlimit le nombre de liens est bien plus grand et de ce fait les pv sont supérieures)
-% (on marque de manière spécifique les points pour lesquels pv>-5 dans les réseaux qlimit).
-% => DANS LES RÉSEAUX NO QLIMIT TOUS LES VALEURS DE PV SEMBLE ÊTRE NÉGATIVES (VOIR AUSSI RAND).
-% => La corrélation est nettement moins bonne que pour Corr entre les réseaux qlimit et no qlimit.
-%
-% => Il existe un effet d'échatillonnage qui complique l'interprétation:
-% On observe une rotation de l'ensemble des points lorque l'on passe de RepNb=1 à RepNb=NetNb(1)
-% Cela s'explique par une dispersion des valeurs qui dépend de repNb (alors que la moyenne des mean(Pv) reste remarquablement
-% constante entre -6.8 et -7.1 pour les réseaux qlimit et -6.3 à -7.1 pour les réseaux no qlimit)
-% Pour RepNb passant de 14 à 1 , std(mean(Pv)) passe de 1.1 à 3.6 dans les réseaux qlimit
-% et de 1.3 à 3.5 dans les réseaux no qlimit.
-% En fait la valeur de std(mean(Pv)) augmente principalement en dessous de RepNb=4 (dépasse alors 2);
-% ET L'ON PEUT SE DEMANDER SI LES CORRÉLATIONS OBSERVÉES SONT SIGNIFICATIVES.
-% Mêmes observations avec std(Pv) concernant l'effet d'échantillonnage et la rotation de
-% l'ensemble des points.
-% pour RepNb passant de 14 à 2 :
-% moyenne des mean(StdPv)
-% qlimit : 3.2 à 1.7; no qlimit: 3.4 à 1.8
-% moyenne des std(StdPv)
-% qlimit : 0.5 à 1.5; no qlimit: 0.6 à 1.6
-
-if ~isempty(find(FigRanks==26))&NetRankListNb==2
-    FigRank=26;
-    Colors='rkbcygm';
-    CNb=length(Colors);
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
-
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
-    LetterRank=0;
-    for PlotL=1:2
-        if NetRankListNb==2
-            for TypeL=1:2
-                for SimL=1:3
-                    LetterRank=LetterRank+1;
-                    h=figure;
-                    if TypeL==1
-                        if PlotL==1
-                            set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                        else
-                            set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                        end
-                    else
-                        if PlotL==1
-                            set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                        else
-                            set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                        end
-                    end
-                    if PlotL==1
-                        Val1=MeanPv{2}{TypeL}{SimL};
-                        Val2=OutMeanPv{2}{TypeL}{SimL};
-                    else
-                        Val1=StdPv{2}{TypeL}{SimL};
-                        Val2=OutStdPv{2}{TypeL}{SimL};
-                    end
-                    PvPos=MeanPv{1}{TypeL}{SimL}>Limit.pv;
-                    for RepL=1:NetNb(1)-1
-                        RepPos=RepNb{1}{TypeL}{SimL}==RepL;
-                        CurrPvPos=find(PvPos&RepPos);
-                        length(RepPos)
-                        if ~isempty(RepPos)
-                            subplot(SubNb1,SubNb2,RepL)
-                            hold on
-                            plot(Val1(RepPos),Val2(RepPos),sprintf('%c+',Colors(SimL)),'markersize',3)
-                            %plot(Val1(RepPos),Val2(RepPos),sprintf('%c+',Colors(SimL)))
-                            plot(Val1(CurrPvPos),Val2(CurrPvPos),'b+','markersize',3)
-                            line([-15,15],[-15,15])
-                            Pears=corrcoef(Val1(RepPos),Val2(RepPos));
-                            CurrMean1=mean(Val1(RepPos));
-                            CurrStd1=std(Val1(RepPos));
-                            CurrMean2=mean(Val2(RepPos));
-                            CurrStd2=std(Val2(RepPos));
-                            if length(Pears)==2
-                                Pears=Pears(2);
-                            end
-
-                            set(gca,'box','on')
-                            if PlotL==1
-                                switch SimL
-                                    case 1
-                                        title(sprintf('MeanPv IN EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                    case 2
-                                        title(sprintf('MeanPv OUT EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                    case 3
-                                        title(sprintf('MeanPv RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                end
-                                set(gca,'xlim',[-15,15])
-                                set(gca,'ylim',[-15,15])
-                                xlabel('mean pv IsCorr Corr>0')
-                                ylabel('mean pv IsCorr Corr=0')
-                            else
-                                switch SimL
-                                    case 1
-                                        title(sprintf('StdPv IN EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                    case 2
-                                        title(sprintf('StdPv OUT EXONS RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                    case 3
-                                        title(sprintf('StdPv RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                end
-                                set(gca,'xlim',[0,10])
-                                set(gca,'ylim',[0,10])
-                                xlabel('std pv IsCorr Corr>0')
-                                ylabel('std pv IsCorr Corr=0')
-
-                            end
-                        end
-                    end
-                    set(gcf,'color',[1,1,1])
-                    Position=get(gcf,'position');
-                    Position(3:4)=[1000,700];
-                    set(gcf,'position',Position)
-                    try
-                        cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                    catch
-                        mkdir(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                        cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                    end
-                    saveas(h,sprintf('m%u_fig%uq%c.png',ChipRank,FigRank,Letters(letterRank)),'png')
-                    close(h)
-                end
-            end
-        end
-    end
-end
-%% FIG27q
-% Pour répondre on prend des réseaux choisi aléatoirement mais en respectant le nombre de réseaux dans lesquels
-% corr est significatifs (PosNb).
-% Cela montre que quand le couple est très reproductible (par ex PosNb=14) si l'on prend un réseau de manière alétoire, on a
-% de grande chance de tomber sur un des PosNb réseaux et la valeur est comprise entre Limit.pv et -5 et non pas entre Limit.pv et 0.
-% De fait mean(mean(Pv))=-7.0 aussi bien pour Kept que pour NotKept et std(mean(Pv)) est stable (passe de 1.4 à 1.6).
-% En revanche quand PosNb est faible cela veut dire que les couples concernés sont peu 'fiables' et effectivement
-% la valeur de pv oscille dans ce cas entre Limit.pv et 0 même pour le ou les réseaux non choisi aléatoirement (figure 3).
-% De fait mean(mean(Pv))=-6.6 aussi bien pour Kept que pour NotKept mais std(mean(Pv)) varie beaucoup et passe de 2.8 pour Kept à 1.4 pour NoKept.
-% Il y a donc superposition d'un effet d'échantillonage (la moyenne de plusieurs valeurs est toujours comprise entre Limit.pv et -5
-% ET UN EFFET DE CORRÉLATION RÉEL et de valeurs différentes pour les couples fiables (avec PosNb pas trop petit). Dans ce dernier
-% cas les valeurs individuelles sont comprises entre Limit.pv et -5 (A VERIFIER).
-% Même conclusions avec std(Pv).
-if ~isempty(find(FigRanks==27)) & NetRankListNb==2
-    FigRank=27;
-    Colors='rkbcygm';
-    CNb=length(Colors);
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
-
-    SubNb1=floor(sqrt(NetNb(1)));
-    SubNb2=ceil(NetNb(1)/SubNb1);
-    Colors='rmg';
-    Lines={'-',':'};
-    for PlotL=1:2
-        for TypeL=1:2
-            for SimL=1:3
-                h=figure;
-                if TypeL==1
-                    if PlotL==1
-                        set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    else
-                        set(h,'name',sprintf('FIG%u%c - m%u: SINGLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    end
-                else
-                    if PlotL==1
-                        set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (MeanVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    else
-                        set(h,'name',sprintf('FIG%u%c - m%u: MULTIPLE (StdVal,InSim%u)',FigRank,Letters(LetterRank),ChipRank),SimL)
-                    end
-                end
-                if PlotL==1
-                    Val1=RandMeanPv{2}{TypeL}{SimL};
-                    Val2=RandOutMeanPv{2}{TypeL}{SimL};
-                else
-                    Val1=RandStdPv{2}{TypeL}{SimL};
-                    Val2=RandOutStdPv{2}{TypeL}{SimL};
-                end
-                for RepL=1:NetNb(1)-1
-                    RepPos=RepNb{1}{TypeL}{SimL}==RepL;
-                    length(RepPos)
-                    if ~isempty(RepPos)
-                        subplot(SubNb1,SubNb2,RepL)
-                        hold on
-                        plot(Val1(RepPos),Val2(RepPos),sprintf('%c+',Colors(SimL)),'markersize',3)
-
-                        %plot(Val1(RepPos),Val2(RepPos),sprintf('%c+',Colors(SimL)))
-                        Pears=corrcoef(Val1(RepPos),Val2(RepPos));
-                        CurrMean1=mean(Val1(RepPos));
-                        CurrStd1=std(Val1(RepPos));
-                        CurrMean2=mean(Val2(RepPos));
-                        CurrStd2=std(Val2(RepPos));
-                        if length(Pears)==2
-                            Pears=Pears(2);
-                        end
-                        set(gca,'box','on')
-                        if PlotL==1
-                            switch SimL
-                                case 1
-                                    title(sprintf('Mean Pv IN RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 2
-                                    title(sprintf('Mean Pv OUT RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 3
-                                    title(sprintf('Mean Pv RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                            end
-                            line([-15,5],[-15,5])
-                            line([-15,-5],[-5,-5])
-                            line([-5,-5],[-15,-5])
-                            xlabel('mean pv IsCorr Rand Corr>0')
-                            ylabel('mean pv IsCorr Rand Corr=0')
-                        else
-                            switch SimL
-                                case 1
-                                    title(sprintf('Std Pv IN RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 2
-                                    title(sprintf('Std Pv OUT RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                                case 3
-                                    title(sprintf('Std Pv RAND RepNb=%u (corr=%.2f)\nmeanX=%.1f, stdX==%.1f,meanY=%.1f, stdY==%.1f',RepL,Pears,CurrMean1,CurrStd1,CurrMean2,CurrStd2))
-                            end
-                            line([0,10],[0,10])
-                            xlabel('std pv IsCorr Rand Corr>0')
-                            ylabel('std pv IsCorr Rand Corr=0')
-                        end
-                    end
-                end
-                set(gcf,'color',[1,1,1])
-                Position=get(gcf,'position');
-                Position(3:4)=[1000,700];
-                set(gcf,'position',Position)
-                try
-                    cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                catch
-                    mkdir(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                    cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-                end
-                saveas(h,sprintf('m%u_fig%uq%c.png',ChipRank,FigRank,Letters(letterRank)),'png')
-                close(h)
-            end
-        end
-    end
-end
-
-%% FIG18
-if ~isempty(find(FigRanks==18))
-    FigRank=18;
+%% FIG33
+if ~isempty(find(FigRanks==33))
+    FigRank=33;
     %Without 0 class
     Legend={'sIn IsCorr Corr>0','sOut IsCorr Corr>0','sRand IsCorr Corr>0','mIn IsCorr Corr>0',...
         'mOut IsCorr Corr>0','mRand IsCorr Corr>0'};
@@ -1485,9 +1044,9 @@ if ~isempty(find(FigRanks==18))
 end
 
 
-%% FIG19
-if ~isempty(find(FigRanks==19))
-    FigRank=19;
+%% FIG34
+if ~isempty(find(FigRanks==34))
+    FigRank=34;
     %voisinage des couples
     %charger toutes les valeurs du réseau (CORR et ANTI)
     Corr=[];
@@ -1520,7 +1079,7 @@ if ~isempty(find(FigRanks==19))
             CurrNetRank=NetRanks{ListL}(NetL);
             CNetFile=sprintf('c_m%u_n%u.4mat',ChipRank,CurrNetRank);
             ANetFile=sprintf('a_m%u_n%u.4mat',ChipRank,CurrNetRank);
-            NetDir=fullfile(K.dir.net,sprintf('m%03u',ChipRank),sprintf('n%05u',CurrNetRank));
+            NetDir=fullfile(K.dir.net,sprintf('m%u',ChipRank),sprintf('n%u',CurrNetRank));
             cd(NetDir);
             for CoupleL=1:CoupleNb
                 %recover corr and anti values for each probe set of the pair
@@ -1537,7 +1096,7 @@ if ~isempty(find(FigRanks==19))
     end
 
 
-    %FIG19a - FIG19b
+    %FIG34a - FIG34b
     %CORR
     % reproducibility of correlation values of a probe set in different networks
     Colors=colors(colormap,round(NetNb(1)/2)*(round(NetNb(1)/2)-1)/2);
@@ -1621,7 +1180,7 @@ if ~isempty(find(FigRanks==19))
     end
 
 
-    %FIG19c - FIG19d
+    %FIG34c - FIG34d
     %reproductibilité entre network pour un probeset donné
     %ANTI
     for FigL=1:2
@@ -1675,7 +1234,7 @@ if ~isempty(find(FigRanks==19))
     end
 
 
-    %FIG19e - FIG19f
+    %FIG34e - FIG34f
     %reproductibilité des CORR entre probe sets d'un même couple à l'intérieur d'un même
     %réseau
     Colors=colors(colormap,round(NetNb/2));
@@ -1728,7 +1287,7 @@ if ~isempty(find(FigRanks==19))
 
 
 
-    %FIG19g - FIG19h
+    %FIG34g - FIG34h
     %reproductibilité des ANTI entre probe sets d'un même couple à l'intérieur d'un même
     %réseau
     Colors=colors(colormap,round(NetNb/2));
@@ -1782,7 +1341,7 @@ if ~isempty(find(FigRanks==19))
 
 
 
-    %FIG19i
+    %FIG34i
     % distribution du voisinage
     Conn{1}=zeros(CoupleNb,2,round(NetNb(1)/2));
     Conn{2}=zeros(CoupleNb,2,NetNb(1)-round(NetNb(1)/2));
@@ -1856,7 +1415,7 @@ if ~isempty(find(FigRanks==19))
 
 
 
-    %FIG19j
+    %FIG34j
     %la diminution du nombre de liens est dûe à une disparition des liens présents dans les autres réseaux
     % Moyenne des connectiviés - chaque couple de probe sets est relié par un trait.
     % Pour chaque probe set ont calcule la connectivité dans chaque réseau et l'on fait les moyennes des valeurs
@@ -1968,11 +1527,11 @@ if ~isempty(find(FigRanks==19))
     close(h)
 end
 
-%% FIG20
+%% FIG35
 %Caracteristics of probes
 
-if ~isempty(find(FigRanks==20))
-    FigRank=20;
+if ~isempty(find(FigRanks==35))
+    FigRank=35;
 
     Colors='rbk';
     Lines={'-','-.'};
@@ -2000,7 +1559,7 @@ if ~isempty(find(FigRanks==20))
                 Val=MeanComGene{TypeL}{SimL}{GrpL};
                 plot(sort(Val),1/length(Val):1/(length(Val)+1):1,sprintf('%c%s',Colors(GrpL),Lines{SimL}))
             end
-            title('mean common gene')
+            title('mean common genes')
             set(gca,'box','on')
             set(gca,'ylim',[0,0.2])
         end
@@ -2024,7 +1583,7 @@ if ~isempty(find(FigRanks==20))
                 Val=ComTscript{TypeL}{SimL}{GrpL};
                 plot(sort(Val),1/length(Val):1/(length(Val)+1):1,sprintf('%c%s',Colors(GrpL),Lines{SimL}))
             end
-            title('common transcrips')
+            title('common transcripts')
             set(gca,'box','on')
             set(gca,'xlim',[0,5])
         end
@@ -2038,7 +1597,7 @@ if ~isempty(find(FigRanks==20))
             end
             title('mean common transcripts')
             set(gca,'box','on')
-            set(gca,'xlim',[0,5])
+            set(gca,'xlim',[0,1])
         end
         for SimL=1:2
             subplot(3,4,6)
@@ -2130,9 +1689,9 @@ if ~isempty(find(FigRanks==20))
             cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
         catch
             mkdir(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
-            cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank),'png'))
+            cd(fullfile(K.dir.mldata,Species,sprintf('m%u_%up',ChipRank),'png'))
         end
-        if FigL==1
+        if TypeL==1
             saveas(h,sprintf('m%u_fig%ua.png',ChipRank,FigRank),'png')
             close(h)
         else
@@ -2143,57 +1702,9 @@ if ~isempty(find(FigRanks==20))
 end
 
 
-
-
-
-%% FIG28
-if ~isempty(find(FigRanks==28))
-    FigRank=28;
-    %comparaisons de deux séries de réseaux qlimit
-    Colors='rb';
-    Lines={'-','-.'};
-    h=figure;
-    if NetRankListNb==2 & NoQlimitFlag==0
-        h=figure;
-        set(h,'name',sprintf('FIG%u - m%u: comparison of two series of networks',FigRank,ChipRank))
-        for TypeL=1:2
-            for SimL=1:2
-                subplot(2,3,(TypeL-1)*3+1)
-                hold on
-                for ListL=1:2
-                    PosIndex=find(RepNb{ListL}{TypeL}{SimL}==NetNb(ListL));
-                    Val=MeanCorr{ListL}{TypeL}{SimL}(PosIndex);
-                    plot(sort(Val),1/length(Val):1/(length(Val)+1):1,sprintf('%c%s',Colors(SimL),Lines{ListL}))
-                end
-                set(gca,'box','on')
-                title('mean corr')
-                subplot(2,3,(TypeL-1)*3+2)
-                hold on
-                for ListL=1:2
-                    PosIndex=find(RepNb{ListL}{TypeL}{SimL}==NetNb(ListL));
-                    Val=MeanAnti{ListL}{TypeL}{SimL}(PosIndex);
-                    plot(sort(Val),1/length(Val):1/(length(Val)+1):1,sprintf('%c%s',Colors(SimL),Lines{ListL}))
-                end
-                set(gca,'box','on')
-                title('mean anti')
-                subplot(2,3,(TypeL-1)*3+3)
-                hold on
-                for ListL=1:2
-                    PosIndex=find(RepNb{ListL}{TypeL}{SimL}==NetNb(ListL));
-                    Val=MeanPv{ListL}{TypeL}{SimL}(PosIndex);
-                    plot(sort(Val),1/length(Val):1/(length(Val)+1):1,sprintf('%c%s',Colors(SimL),Lines{ListL}))
-                end
-                set(gca,'box','on')
-                title('mean pv')
-            end
-        end
-        set(gcf,'color',[1,1,1])
-    end
-end
-
-%% FIG21
-if ~isempty(find(FigRanks==21))
-    FigRank=21;
+%% FIG36
+if ~isempty(find(FigRanks==36))
+    FigRank=36;
     %Statistics on all significatives Corr,Anti and Pv values
 
 
@@ -2292,9 +1803,9 @@ end
 
 
 
-%% FIG22
-if ~isempty(find(FigRanks==22))
-    FigRank=22;
+%% FIG37
+if ~isempty(find(FigRanks==37))
+    FigRank=37;
     %Relation between Corr,Anti and Pv values
     h=figure;
     set(h,'name',sprintf('FIG%ub - m%u: In Out Stats',FigRank,ChipRank))
@@ -2345,11 +1856,9 @@ if ~isempty(find(FigRanks==22))
 end
 
 
-
-
-%% FIG23
-if ~isempty(find(FigRanks==23))
-    FigRank=23;
+%% FIG38
+if ~isempty(find(FigRanks==38))
+    FigRank=38;
     %Relation between Corr,Anti and Pv values
     h=figure;
     set(h,'name',sprintf('FIG%u - m%u: CORR,ANTI,PV',FigRank,ChipRank))
@@ -2443,10 +1952,10 @@ end
 
 
 
-%% FIG24 - relationships between CORR, ANTI and Pearson's correlation coefficient in first
+%% FIG39 - relationships between CORR, ANTI and Pearson's correlation coefficient in first
 % network
-if ~isempty(find(FigRanks==24))
-    FigRank=24;
+if ~isempty(find(FigRanks==39))
+    FigRank=39;
     h=figure;
     set(h,'name',sprintf('FIG%u - m%u: CORR vs PEARSON',FigRank,ChipRank))
     set(gcf,'color',[1,1,1])

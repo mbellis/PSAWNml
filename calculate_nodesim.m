@@ -2,13 +2,37 @@
 % FUNCTION CALCULATE_NODESIM %
 %============================%
 
-%CALCULATE_NODESIM calculates node neighbourhood similarity between probesets that target
-% the same genes (duplicates)
+%CALCULATE_NODESIM calculates positive (CORR) and negative (ANTI) correlation,
+% and p-value (PV) of node neighbourhood similarity between different categories of
+% paired probe sets that target the same genes (duplicates) in several networks.
+% Categories are:
+% Pairs of probe sets targeting a single gene
+%    Pairs of probe sets inside exons of the same gene (single)
+%    Pairs of probe sets outside exons of the same gene (single_testout)
+%    Pairs of randomly matched probe sets present in ~single and targeting genes with more
+%      or = than max(1,ProbeNbLimit-2 probes (single_testhigh)
+%    Pairs of randomly matched probe sets, one present ~testhigh and the other in ~testLow
+%      (single_testlowhigh)
+%    Pairs of randomly matched probe sets present in ~single targeting with genes with less
+%      than 3 probes (single_testlow)
+% Pairs of probe sets targeting several genes
+%    Pairs of probe sets inside exons of the same genes (multiple)
+%    Pairs of probe sets outside exons of the same genes (multiple_testout)
+%    Pairs of randomly matched probe sets present in ~multiple and targeting genes with more
+%      or = than max(1,ProbeNbLimit-2 probes (multiple_testhigh)
+%    Pairs of randomly matched probe sets, one present ~testhigh and the other in ~testLow
+%      (multiple_testlowhigh)
+%    Pairs of randomly matched probe sets present in ~multiple targeting with genes with less
+%      than 3 probes (multiple_testlow)
+%    Pairs of probe sets inside exons of the same gene(s)
 
 %INPUT PARAMETERS
-% 1     TestFlag: if =1 indicates that similarity is calculated to find limits on corr, anti and
-%                 pv(node neighbourhood similarity); if =0 indicates that similarity is calculated to merge probe
-%                 sets
+% 1     TestFlag: if =1 CORR, ANTI and PV distributions are calculated on all
+%                 categories to study their differential properties;
+%                 if =0 CORR, ANTI and PV distributions are calculated only on single
+%                 category to find corresponding test limits used to determine if a 
+%                 particular pair of probe set must be considered as similar(that is
+%                 targeting the same group of transcript(s)
 % 2 NotFoundFlag: indicates that duplicates not found in a first round are processed
 %                 (TestFlag is equal to 0 in this case)
 % 3 ProbeNbLimit: minimal number of probes targeting a gene (used to make
@@ -17,11 +41,15 @@
 % 5  NetRankList: a list of nets, designed by their rank, used to calculate node smilarity
 % 6 PvCorrLimits: indicates the corr values that must be used to select the
 %                 probe sets used to calculate Pv of node neighbourhood similarity
-% 7     AceFlag: indicates if AcView data are used
+% 7     AceFlag: indicates if AceView data are used
 % 8    IdemFlag: indicates if probe set order is identical in file used by PsawnPy et in
 %                 networks (CVM)
 
 %OUTPUT FILES
+% 
+% For each network, a file containing the Sim variable filled by function NODESIM variable
+% is written in a mat file.
+
 
 %INTERNAL FUNCTION
 
@@ -81,7 +109,13 @@ if isempty(ChipPos)
 end
 Species=K.chip.species{ChipPos};
 ProbeNb=K.chip.probeNb(ChipPos);
-PsNb=K.chip.probesetNb(ChipPos);
+%use the real PsNb value
+NetDir=fullfile(K.dir.net,sprintf('m%u',ChipRank),sprintf('n%u',NetRankList(1)));
+cd(NetDir)
+cfid=fopen(sprintf('c_m%u_n%u.4mat',ChipRank,NetRankList(1)),'rb');
+fseek(cfid,0,'eof');
+PsNb=sqrt(ftell(cfid));
+fclose(cfid)
 
 % load information on probesets by gene (created manually with import_info)
 % for a given gene are listed all the probesets that have a given
@@ -99,9 +133,11 @@ if exist(fullfile(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank)),sprintf
     GroupRanks{1}=EGroupRanks;
     GroupProbeNbs{1}=EGroupProbeNbs;
     TargetedTs{1}=ETargetedTs;
-    NotTargetedTs{1}=ENotTargetedTs;
-    PsInfo{1}=EPsInfo;
+    NotTargetedTs{1}=ENotTargetedTs;    
     clear EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks EExonNames EExonProbeNbs EGroupRanks EGroupProbeNbs ETargetedTs ENotTargetedTs EPsInfo
+    eval(sprintf('load m%u_ensembl_psinfo',ChipRank))
+    PsInfo{1}=EPsInfo;
+    clear EPsInfo
 end
 
 %load probesets with AceView gene information
@@ -115,9 +151,11 @@ if exist(fullfile(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank)),sprintf
     GroupProbeNbs{2}=AGroupProbeNbs;
     TargetedTs{2}=ATargetedTs;
     NotTargetedTs{2}=ANotTargetedTs;
-    PsInfo{2}=APsInfo;
-    clear AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonProbeNbs AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs APsInfo
+    clear AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks AExonNames AExonProbeNbs AGroupRanks AGroupProbeNbs ATargetedTs ANotTargetedTs
     clear GeneName GeneNames PsNames PsRanks TargetedTs NotTargetedTs
+    eval(sprintf('load m%u_aceview_psinfo',ChipRank))
+    PsInfo{2}=APsInfo;
+    clear APsInfo
 end
 
 
@@ -146,7 +184,7 @@ if ~exist(SaveFile,'file')
         SaveFile=sprintf('m%u_dup_probenb%u_single.mat',ChipRank,ProbeNbLimit);
         SingleFlag=1;
         [DupStat,DupRank,GeneRankDuplicate,EnsDuplicateOut,AceDuplicateOut,EnsGeneNameOut,AceGeneNameOut,Duplicate,DuplicateOut,DuplicateLowHigh,DuplicateLow,DuplicateHigh]=make_pspairs(ProbeNbLimit,TargetedGenes,TargetingPsRanks,TestFlag,SingleFlag,PsInfo,ProbeNb,AceFlag);
-        eval(sprintf('save %s DupStat DupRank GeneRankDuplicate EnsDuplicateOut EnsGeneNameOut Duplicate DuplicateOut DuplicateLowHigh DuplicateLow DuplicateHigh',SaveFile))        
+        eval(sprintf('save %s DupStat DupRank GeneRankDuplicate EnsDuplicateOut EnsGeneNameOut Duplicate DuplicateOut DuplicateLowHigh DuplicateLow DuplicateHigh',SaveFile))
         %probe set targeting severalgenes
         SaveFile=sprintf('m%u_dup_probenb%u_multiple.mat',ChipRank,ProbeNbLimit);
         SingleFlag=0;
@@ -171,6 +209,7 @@ if ~exist(SaveFile,'file')
 end
 
 %calculate p-values on neighbourhood
+
 if TestFlag
     for SingleL=1:2
         %for SingleL=2
@@ -205,13 +244,13 @@ if TestFlag
             DupType=0;
             NODESIM(Species,ChipRank,PsNb,NetRank,ProbeNbLimit,Duplicate,TestFlag,MultipleFlag,DupType,PvCorrLimits,IdemFlag)
         end
-        
+
     end
 else
     if NotFoundFlag==0
         SaveFile=sprintf('m%u_dup_probenb%u.mat',ChipRank,ProbeNbLimit);
         load(SaveFile)
-        
+
         for NetL=1:length(NetRankList)
             NetRank=NetRankList(NetL);
 
@@ -226,18 +265,18 @@ else
             DupType=0;
             NODESIM(Species,ChipRank,PsNb,NetRank,ProbeNbLimit,Duplicate,TestFlag,[],DupType,PvCorrLimits,IdemFlag)
         end
-        
+
     else
         SaveFile=sprintf('m%u_dup_probenb%u_notfound.mat',ChipRank,ProbeNbLimit);
         load(SaveFile)
-        
+
         for NetL=1:length(NetRankList)
             NetRank=NetRankList(NetL);
 
             DupType=3;
             NODESIM(Species,ChipRank,PsNb,NetRank,ProbeNbLimit,NotFound,TestFlag,[],DupType,PvCorrLimits,IdemFlag)
         end
-        
+
     end
 end
 
@@ -254,19 +293,9 @@ function NODESIM(Species,ChipRank,PsNb,NetRank,ProbeNbLimit,Dup,TestFlag,Multipl
 
 global K
 
-if IdemFlag==0
-    cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank)))
-    eval(sprintf('load m%u_ps2net',ChipRank))
-    NetPs=Ps2Net;
-    clear Ps2Net
-else
-    NetPs=[1:PsNb]';
-end
-%reconstruct [ori] list for multiple (indicates only one probeset of the first chipset in case it is multiple)
-ColIndex=1:PsNb;
+
 
 %save directory and save file
-
 SaveDir=fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank));
 cd(SaveDir)
 if TestFlag
@@ -310,7 +339,17 @@ else
 end
 if ~exist(SaveFile,'file')
 
-    NetDir=fullfile(K.dir.net,sprintf('m%03u',ChipRank),sprintf('n%05u',NetRank));
+    NetDir=fullfile(K.dir.net,sprintf('m%u',ChipRank),sprintf('n%u',NetRank));    
+    if IdemFlag==0
+        cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank)))
+        eval(sprintf('load m%u_ps2net',ChipRank))
+        NetPs=Ps2Net;
+        clear Ps2Net
+    else
+        NetPs=[1:PsNb]';
+    end
+    %reconstruct [ori] list for multiple (indicates only one probeset of the first chipset in case it is multiple)
+    ColIndex=1:PsNb;
     %nb of common links, links in first chip and links in second chip (or duplicate)
     %in various conditions are stored in Sim
     Sim=[];
@@ -340,32 +379,36 @@ if ~exist(SaveFile,'file')
             for PsL2=PsL1+1:length(C)
                 %do not record doublons
                 if isempty(Sim)|isempty(find(Sim(:,1)==Dup{DupL}(PsL1)&Sim(:,2)==Dup{DupL}(PsL2)))
-                    Pos2=find(ColIndex==Dup{DupL}(PsL2));
-                    AntiVal=[AntiVal;A{PsL1}(Pos2)];
-                    CorrVal=[CorrVal;C{PsL1}(Pos2)];
+                    Pos2=find(ColIndex==NetPs(Dup{DupL}(PsL2)));
+                    if ~isempty(Pos2)
+                        AntiVal=[AntiVal;A{PsL1}(Pos2)];
+                        CorrVal=[CorrVal;C{PsL1}(Pos2)];
 
-                    Res=[Dup{DupL}(PsL1),Dup{DupL}(PsL2)];
-                    %
-                    for Limit=PvCorrLimits
-                        Pos1=find(C{PsL1}>Limit&C{PsL2}>Limit);
-                        Pos2=find(C{PsL1}>Limit);
-                        Pos3=find(C{PsL2}>Limit);
-                        if C{PsL1}(Pos2)>Limit
-                            %without weight
-                            SimVal=[length(Pos1),length(Pos2),length(Pos3),(length(Pos1)-1)/min(length(Pos2),length(Pos3))];
-                        else
-                            SimVal=[length(Pos1),length(Pos2),length(Pos3),(length(Pos1))/(min(length(Pos2),length(Pos3))+1)];
-                            %without weight
+                        Res=[Dup{DupL}(PsL1),Dup{DupL}(PsL2)];
+                        %
+                        for Limit=PvCorrLimits
+                            Pos1=find(C{PsL1}>Limit&C{PsL2}>Limit);
+                            Pos2=find(C{PsL1}>Limit);
+                            Pos3=find(C{PsL2}>Limit);
+                            if C{PsL1}(Pos2)>Limit
+                                %without weight
+                                SimVal=[length(Pos1),length(Pos2),length(Pos3),(length(Pos1)-1)/min(length(Pos2),length(Pos3))];
+                            else
+                                SimVal=[length(Pos1),length(Pos2),length(Pos3),(length(Pos1))/(min(length(Pos2),length(Pos3))+1)];
+                                %without weight
+                            end
+                            Res=[Res,SimVal];
+                            SimVal=SimVal(1:3);
+                            if SimVal(2)==0|SimVal(3)==0
+                                Res=[Res,0];
+                            else
+                                Res=[Res,hypergeometric(SimVal(1),SimVal(2),SimVal(3),PsNb)];
+                            end
                         end
-                        Res=[Res,SimVal];
-                        SimVal=SimVal(1:3);
-                        if SimVal(2)==0|SimVal(3)==0
-                            Res=[Res,0];
-                        else
-                            Res=[Res,hypergeometric(SimVal(1),SimVal(2),SimVal(3),PsNb)];
-                        end
+                        Sim=[Sim;Res];
+                    else
+                        'stop'
                     end
-                    Sim=[Sim;Res];
                 end
             end
         end

@@ -35,9 +35,10 @@
 %                     PsInfo{Type}{PsRank}{1} GIVES THE GENES THAT ARE TARGETED OUTSIDE EXONS
 % 7        PsProbeNb: the number of probes in a normal probe set
 %                     (few probe sets may have more probes than PsProbeNb).
+% 8          AceFlag:  indicates if AceView is used.
 
 %OUTPUT
-% If TestFlag==0 no difference is made between single of multiple targets (SingleFalg is not
+% If TestFlag==0 no difference is made between single of multiple targets (SingleFlag is not
 % used                
 % If TestFlag==1 and SingleFlag=1 only probe sets targeting a single gene are considered
 % If TestFlag==1 and SingleFlag=0 only probe sets targeting several genes are considered
@@ -45,7 +46,7 @@
 % 1            DupStat : distribution of the number of targeted genes
 % 2            DupRank : probe set ranks belonging to each partition on the number of
 %                        targeted genes
-% 3  GeneRankDuplicate : a list of gene ranks (referending GeneName list) that are repeated
+% 3  GeneRankDuplicate : a list of gene ranks (indexing GeneName list) that are repeated
 %                        as much as they are targeted by different probe sets. If GeneName 45
 %                        is targeted by 3 probe set, 45,45,45, is present in this list
 %                        (Ensembl and AceView genes are respectively at the begining
@@ -104,7 +105,7 @@ AceGeneNameOut=[];
 
 %construct Duplicate
 %Read input
-PsNb=length(PsInfo{1});
+PsNb=length(PsInfo{1}.geneNames);
 %DupByBlocOut=cell(2,1);
 PsRankHigh=[];
 
@@ -157,7 +158,7 @@ if TestFlag==0
         
 
 
-        %find duplicates for Ps targetting up, down or intron with at lest probeNbLimit probes
+        %find duplicates for Ps targetting up, down or intron with at least probeNbLimit probes
         % and not exons with more than probeNbLimit probes
         % (COULD TARGET EXONS WITH LESS)
 
@@ -176,11 +177,11 @@ if TestFlag==0
             PsRank=[];
             for PsL=1:length(NotTarget)
                 CurrPsRank=NotTarget(PsL);
-                Pos=find(PsInfo{TypeL}{CurrPsRank}{1}.notInExonProbeNbs>=ProbeNbLimit);
+                Pos=find(PsInfo{TypeL}.notInExonProbeNbs{CurrPsRank}{1}>=ProbeNbLimit);
                 if ~isempty(Pos)
                     for PosL=1:length(Pos)
                         PsRank=[PsRank;CurrPsRank];
-                        GeneName=[GeneName;PsInfo{TypeL}{CurrPsRank}{1}.geneNames{Pos(PosL)}];
+                        GeneName=[GeneName;PsInfo{TypeL}.geneNames{CurrPsRank}{1}{Pos(PosL)}];
                     end
                 end
             end
@@ -290,19 +291,19 @@ else
     if SingleFlag
         PsRank=[];
         GeneName={};
-        ProbeBinNb=length(PsInfo{1}{1});
+        ProbeBinNb=size(PsInfo{1}.geneNames{1},1);
         %process each probeset
-        for PsL=1:length(PsInfo{1})
+        for PsL=1:length(PsInfo{1}.geneNames)
             GeneNb=0;
             %process each ProbeNb
             %ProbeNb in PsInfo is shifted +1
             %detect if the current probe set target only one gene in
             %exons => start at position 2
             for ProbeNbL=2:ProbeBinNb
-                if ~isempty(PsInfo{1}{PsL}{ProbeNbL}.geneNames)
-                    if length(PsInfo{1}{PsL}{ProbeNbL}.geneNames)==1
+                if ~isempty(PsInfo{1}.geneNames{PsL}{ProbeNbL})
+                    if length(PsInfo{1}.geneNames{PsL}{ProbeNbL})==1
                         GeneNb=GeneNb+1;
-                        CurrGeneName=PsInfo{1}{PsL}{ProbeNbL}.geneNames{1};
+                        CurrGeneName=PsInfo{1}.geneNames{PsL}{ProbeNbL}{1};
                         CurrProbeNb=ProbeNbL-1;
                         if GeneNb>1
                             break
@@ -334,8 +335,8 @@ else
             %CONTROL SET3
             %probesets targetting only one gene in up, down or intron (only Ensembl genes) with equal or more than ProbeNbLimit
             if GeneNb==0
-                if length(PsInfo{1}{PsL}{1}.geneNames)==1 & PsInfo{1}{PsL}{1}.notInExonProbeNbs(1)>=ProbeNbLimit
-                    GeneNameOut=[GeneNameOut;PsInfo{1}{PsL}{1}.geneNames{1}];
+                if length(PsInfo{1}.geneNames{PsL}{1})==1 & PsInfo{1}.notInExonProbeNbs{PsL}{1}(1)>=ProbeNbLimit
+                    GeneNameOut=[GeneNameOut;PsInfo{1}.geneNames{PsL}{1}{1}];
                     PsRankOut=[PsRankOut;PsL];
                 end
             end
@@ -345,10 +346,10 @@ else
 
         PsRank=[];
         GeneName={};
-        ProbeBinNb=length(PsInfo{1}{1});
+        ProbeBinNb=size(PsInfo{1}.geneNames{1},1);
 
         %process each probeset
-        for PsL=1:length(PsInfo{1})
+        for PsL=1:length(PsInfo{1}.geneNames)
             GeneNb=0;
             CurrGeneNames={};
             CurrProbeNbs=[];
@@ -357,10 +358,10 @@ else
             %detect if the current probe set target several genes in
             %exons => start at position ProbeNb
             for ProbeNbL=ProbeNbLimit+1:ProbeBinNb
-                if ~isempty(PsInfo{1}{PsL}{ProbeNbL}.geneNames)
-                    for GeneL=1:length(PsInfo{1}{PsL}{ProbeNbL}.geneNames)
+                if ~isempty(PsInfo{1}.geneNames{PsL}{ProbeNbL})
+                    for GeneL=1:length(PsInfo{1}.geneNames{PsL}{ProbeNbL})
                         GeneNb=GeneNb+1;
-                        CurrGeneNames{end+1}=PsInfo{1}{PsL}{ProbeNbL}.geneNames{GeneL};
+                        CurrGeneNames{end+1}=PsInfo{1}.geneNames{PsL}{ProbeNbL}{GeneL};
                         CurrProbeNbs=[CurrProbeNbs,ProbeNbL-1];
                     end
                 end
@@ -386,11 +387,11 @@ else
             %CONTROL SET3
             %probesets targetting more tan one gene in up, down or intron (only Ensembl genes) with equal or more than ProbeNbLimit
             if GeneNb==0
-                if length(PsInfo{1}{PsL}{1}.geneNames)>1
+                if length(PsInfo{1}.geneNames{PsL}{1})>1
                     KeepIt=0;
                     KeepNb=0;
-                    for GeneL=1:length(PsInfo{1}{PsL}{1}.geneNames)
-                        if PsInfo{1}{PsL}{1}.notInExonProbeNbs(GeneL)>=ProbeNbLimit
+                    for GeneL=1:length(PsInfo{1}.geneNames{PsL}{1})
+                        if PsInfo{1}{PsL}.notInExonProbeNbs{1}(GeneL)>=ProbeNbLimit
                             KeepNb=KeepNb+1;
                             if KeepNb>1
                                 KeepIt=1;
@@ -400,9 +401,9 @@ else
                     end
                     %recover Gene iff there is at least two that are targeted by more than ProbeNbLimit
                     if KeepIt
-                        for GeneL=1:length(PsInfo{1}{PsL}{1}.geneNames)
-                            if PsInfo{1}{PsL}{1}.notInExonProbeNbs(GeneL)>=ProbeNbLimit
-                                GeneNameOut=[GeneNameOut;PsInfo{1}{PsL}{1}.geneNames{GeneL}];
+                        for GeneL=1:length(PsInfo{1}.geneNames{PsL}{1})
+                            if PsInfo{1}.notInExonProbeNbs{PsL}{1}(GeneL)>=ProbeNbLimit
+                                GeneNameOut=[GeneNameOut;PsInfo{1}.geneNames{PsL}{1}{GeneL}];
                                 PsRankOut=[PsRankOut;PsL];
                             end
                         end

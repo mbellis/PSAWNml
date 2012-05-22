@@ -1,25 +1,26 @@
 %==========================%
 % FUNCTION IMPORT_TARGETNB %
 %==========================%
-
-% IMPORT_TARGETNB read a text file (containing either Ensembl or AceView informations)
+%
+%IMPORT_TARGETNB read a text file (containing either Ensembl or AceView informations)
 %  and creates a matrix indicating for each probeset the number of genes that have x
 %  probes targeting their exons (with x>=1 and x<=n(max(probe nb)))
-
-%INPUT PARAMETERS
-% ChipRank: rank of chip model
-
-%EXTERNAL FILES
-% Read file 'm%ChipRank_probesets_ensembl.txt'
-% and eventually 'm%ChipRank_probesets_aceview.txt'
 %
-% File format: [Ps Rank, number of targeted genes with n probes, n-1 probes, ...,1 probe]
-%              ex : [54, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 2, 0, 0, 2, 0]
-
-% Write 'm%ChipRank_probesets_ensembl.mat' containing variable EnsExonGeneNbs
-% and eventually 'm%ChipRank_probesets_aceview.mat'  containing variable
-% AceExonGeneNbs
-% In output variable, probe nb are in the direct order (1,2,...,n)
+%INPUT PARAMETERS
+%  ChipRank: rank of chip model
+%
+%EXTERNAL FILES
+%  Read file 'm%ChipRank_probesets_ensembl.txt'
+%  and eventually 'm%ChipRank_probesets_aceview.txt'
+%
+%  File format: [Ps Rank, number of targeted genes with n probes, n-1 probes, ...,1 probe]
+%               ex : [54, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 2, 0, 0, 2, 0]
+%
+%  Write 'm%ChipRank_probesets_ensembl.mat' containing variable EnsExonGeneNbs
+%  and eventually 'm%ChipRank_probesets_aceview.mat'  containing variable AceExonGeneNbs
+%  In output variable, probe nb are in the direct order (1,2,...,n)
+%
+%FIGURES 16 to 18
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 %                          c) Michel Bellis                                                %
@@ -78,7 +79,8 @@ if exist(fullfile(K.dir.pydata,Species,'txt',sprintf('m%u_probesets_ensembl.txt'
     cd(K.dir.mlprog)
     save global_ps K
     if DisplayFlag
-        DISPLAY_TARGNB(EnsExonGeneNbs,Species,ChipRank,sprintf('FIG1 - ENSEMBL TARGET NB - CHIP m%u',ChipRank),1)
+        %FIG 16
+        DISPLAY_TARGNB(EnsExonGeneNbs,Species,ChipRank,sprintf('FIG1 - ENSEMBL TARGET NB - CHIP m%u',ChipRank),16)
     end
 else    
     h=errordlg(sprintf('m%u_probesets_ensembl.txt does ot exist',ChipRank));
@@ -106,8 +108,10 @@ if exist(fullfile(K.dir.pydata,Species,'txt',sprintf('m%u_probesets_aceview.txt'
     cd(fullfile(K.dir.mldata,Species,sprintf('m%u',ChipRank)))
     eval(sprintf('save m%u_probesets_aceview AceExonGeneNbs',ChipRank))
     if DisplayFlag
-        DISPLAY_TARGNB(AceExonGeneNbs,Species,ChipRank,sprintf('FIG2 - ACEVIEW TARGET NB - CHIP m%u',ChipRank),2)
-        DISPLAY_ACE(Species,ChipRank,3)
+        %FIG17
+        DISPLAY_TARGNB(AceExonGeneNbs,Species,ChipRank,sprintf('FIG2 - ACEVIEW TARGET NB - CHIP m%u',ChipRank),17)
+        %FIG18
+        DISPLAY_ACE(Species,ChipRank,18)
     end
 end
 

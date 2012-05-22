@@ -101,7 +101,7 @@ else
     %process Ensembl and AceView genes
     TypeEnd=2;
 end
-PsNb=length(PsInfo{1});
+PsNb=length(PsInfo{1}.geneNames);
 Ps=cell(2,1);
 for TypeL=1:TypeEnd
     for PsL=1:PsNb
@@ -126,7 +126,7 @@ end
 %process Ensembl and eventually AceView Genes
 for TypeL=1:TypeEnd
     %maximal number of probes in a probe set
-    MaxProbeNb=size(PsInfo{TypeL}{1},2)-1;
+    MaxProbeNb=size(PsInfo{TypeL}.geneNames{1},1)-1;
     % fill info for each probesets
     for PsL=1:PsNb
         %information on genes targeted by more or equal ProbeNbLimit probes
@@ -138,13 +138,13 @@ for TypeL=1:TypeEnd
         ProbeNb=[];
         %for PsInfo name ProbeNb is shifted (+1)
         for ProbeNbL=ProbeNbLimit+1:MaxProbeNb+1            
-                GeneNameNb=length(PsInfo{TypeL}{PsL}{ProbeNbL}.geneNames);
+                GeneNameNb=length(PsInfo{TypeL}.geneNames{PsL}{ProbeNbL});
                 if GeneNameNb>0
-                    GeneNames=[GeneNames,PsInfo{TypeL}{PsL}{ProbeNbL}.geneNames];
-                    GroupRanks=[GroupRanks,PsInfo{TypeL}{PsL}{ProbeNbL}.groupRanks];
-                    GroupProbeNbs=[GroupProbeNbs,PsInfo{TypeL}{PsL}{ProbeNbL}.groupProbeNbs];
-                    Transcripts=[Transcripts,PsInfo{TypeL}{PsL}{ProbeNbL}.transcripts];
-                    NotTranscripts=[NotTranscripts,PsInfo{TypeL}{PsL}{ProbeNbL}.notTranscripts];
+                    GeneNames=[GeneNames,PsInfo{TypeL}.geneNames{PsL}{ProbeNbL}];
+                    GroupRanks=[GroupRanks,PsInfo{TypeL}.groupRanks{PsL}{ProbeNbL}];
+                    GroupProbeNbs=[GroupProbeNbs,PsInfo{TypeL}.groupProbeNbs{PsL}{ProbeNbL}];
+                    Transcripts=[Transcripts,PsInfo{TypeL}.transcripts{PsL}{ProbeNbL}];
+                    NotTranscripts=[NotTranscripts,PsInfo{TypeL}.notTranscripts{PsL}{ProbeNbL}];
                     ProbeNb=[ProbeNb,repmat(ProbeNbL-1,1,GeneNameNb)];
                 end
         end
@@ -157,18 +157,18 @@ for TypeL=1:TypeEnd
 
         %probesets targetting only genes in up, down or intron with equal or more than ProbeNbLimit probes
         %may target genes in exon or splice but with less than ProbeNbLimit probes
-        Pos=find(PsInfo{TypeL}{PsL}{1}.notInExonProbeNbs>=ProbeNbLimit);
+        Pos=find(PsInfo{TypeL}.notInExonProbeNbs{PsL}{1}>=ProbeNbLimit);
         if ~isempty(Pos)
             SelPos=[];
             for PosL=1:length(Pos)
                 %don'tlist genes that have already been selected in the
                 %previous step
-                if isempty(strmatch(PsInfo{TypeL}{PsL}{1}.geneNames{Pos(PosL)},GeneNames,'exact'))
+                if isempty(strmatch(PsInfo{TypeL}.geneNames{PsL}{1}{Pos(PosL)},GeneNames,'exact'))
                     SelPos=[SelPos;Pos(PosL)];
                 end
             end
-            Ps{TypeL}{PsL}.geneNamesOutSup=PsInfo{TypeL}{PsL}{1}.geneNames(SelPos);
-            Ps{TypeL}{PsL}.probeNbOutSup=PsInfo{TypeL}{PsL}{1}.notInExonProbeNbs(SelPos);
+            Ps{TypeL}{PsL}.geneNamesOutSup=PsInfo{TypeL}.geneNames{PsL}{1}(SelPos);
+            Ps{TypeL}{PsL}.probeNbOutSup=PsInfo{TypeL}.notInExonProbeNbs{PsL}{1}(SelPos);
         end
 
         if ProbeNbLimit>1
@@ -181,13 +181,13 @@ for TypeL=1:TypeEnd
             ProbeNb=[];
 
             for ProbeNbL=2:ProbeNbLimit
-                GeneNameNb=length(PsInfo{TypeL}{PsL}{ProbeNbL}.geneNames);
+                GeneNameNb=length(PsInfo{TypeL}.geneNames{PsL}{ProbeNbL});
                 if GeneNameNb>0
-                    GeneNames=[GeneNames,PsInfo{TypeL}{PsL}{ProbeNbL}.geneNames];
-                    GroupRanks=[GroupRanks,PsInfo{TypeL}{PsL}{ProbeNbL}.groupRanks];
-                    GroupProbeNbs=[GroupProbeNbs,PsInfo{TypeL}{PsL}{ProbeNbL}.groupProbeNbs];
-                    Transcripts=[Transcripts,PsInfo{TypeL}{PsL}{ProbeNbL}.transcripts];
-                    NotTranscripts=[NotTranscripts,PsInfo{TypeL}{PsL}{ProbeNbL}.notTranscripts];
+                    GeneNames=[GeneNames,PsInfo{TypeL}.geneNames{PsL}{ProbeNbL}];
+                    GroupRanks=[GroupRanks,PsInfo{TypeL}.groupRanks{PsL}{ProbeNbL}];
+                    GroupProbeNbs=[GroupProbeNbs,PsInfo{TypeL}.groupProbeNbs{PsL}{ProbeNbL}];
+                    Transcripts=[Transcripts,PsInfo{TypeL}.transcripts{PsL}{ProbeNbL}];
+                    NotTranscripts=[NotTranscripts,PsInfo{TypeL}.notTranscripts{PsL}{ProbeNbL}];
                     ProbeNb=[ProbeNb,repmat(ProbeNbL-1,1,GeneNameNb)];
                 end
             end
@@ -198,15 +198,15 @@ for TypeL=1:TypeEnd
             Ps{TypeL}{PsL}.notTranscriptsInf=NotTranscripts;
             Ps{TypeL}{PsL}.probeNbInf=ProbeNb;
 
-            Pos=find(PsInfo{TypeL}{PsL}{1}.notInExonProbeNbs<ProbeNbLimit&PsInfo{TypeL}{PsL}{1}.notInExonProbeNbs>0);
+            Pos=find(PsInfo{TypeL}.notInExonProbeNbs{PsL}{1}<ProbeNbLimit&PsInfo{TypeL}.notInExonProbeNbs{PsL}{1}>0);
             if ~isempty(Pos)
                 SelPos=[];
-                for PosL=1:length(Pos)
-                    if isempty(strmatch(PsInfo{TypeL}{PsL}{1}.geneNames{Pos(PosL)},GeneNames,'exact'))
+                for PosL=1:length(Pos)                   
+                    if isempty(strmatch(PsInfo{TypeL}.geneNames{PsL}{1}{Pos(PosL)},GeneNames,'exact'))
                         SelPos=[SelPos;Pos(PosL)];
                     end
                 end
-                Ps{TypeL}{PsL}.geneNamesOutInf=PsInfo{TypeL}{PsL}{1}.geneNames(SelPos);
+                Ps{TypeL}{PsL}.geneNamesOutInf=PsInfo{TypeL}.geneNames{PsL}{1}(SelPos);
             end
         end
     end

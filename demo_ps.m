@@ -2,24 +2,24 @@
 % FUNCTION DEMO_PS
 %==================
 % 
-% DEMO_PS load global variables used by other PSAWN scripts
+%DEMO runs a demonstration
 % demo must be run from inside the main directory:
-% 'cd .../psawnml/'
+% 'cd .../psawnML/'
 % 'demo_ps'
 %
-% GLOBAL VARIABLES
-% K.dir contains directory paths and must be edited to match the existing directories
+%GLOBAL VARIABLES
+% K.dir contains directory paths
 % K.chip contains information on chips
 
 
-%¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤%
+%vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 %                          c) Michel Bellis                                                %
 %                          michel.bellis@crbm.cnrs.fr                                      %
 %            Affiliation:  CNRS (Centre National de la Recherche Scientifique - France)    %                               
 %  Bioinformatic Project:  ARRAYMATIC => http://code.google.com/p/arraymatic               %
 %        Code Repository:  GITHUB => http://github.com/mbellis                             %
 %          Personal Page:  http://bns.crbm.cnrs.fr                                         %
-%¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤%
+%vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 %  THIS CODE IS DISTRIBUTED UNDER THE CeCILL LICENSE, WHICH IS COMPATIBLE WITH       %
@@ -29,8 +29,8 @@
 global K
 
 %control that demo is run from the right directory
-RootDir=pwd;
-cd(RootDir)
+ProgDir=pwd;
+cd(ProgDir)
 DirContent=dir;
 Ok=0;
 for i=1:length(DirContent)
@@ -47,16 +47,28 @@ end
 
 %inform directory names
 K.dir.mlprog=pwd;
-K.dir.mldata='/home/mbellis/sosma/data/psawn/mldata';
-K.dir.pydata='/home/mbellis/sosma/data/psawn/pydata';
-K.dir.rawdata='/home/mbellis/sosma/data/psawn/rawdata';
-K.dir.cliquer='/usr/local/cliquer/cl';
-K.dir.net='/home/mbellis/net';
+%if global_ps does not exist, directory names are informed automatically
+%assuming that program has been installed from zipped file, and that data folders
+%has been created properly under the main directory (e.g. psawn)
+%if data have been installed elsewhere, global_ps must be loaded tochange K.dir where
+%necessary
 
+if ~exist('global_ps.mat','file')
 
-cd(K.dir.mlprog)
-IsK=0;
-if exist('global_ps.mat','file')
+    ProgPos=findstr('prog',K.dir.mlprog);
+    if ~isempty(ProgPos)
+        RootDir=ProgDir(1:ProgPos-2);
+        K.dir.mldata=fullfile(RootDir,'data','mldata');
+        K.dir.pydata=fullfile(RootDir,'data','pydata');
+        K.dir.rawdata=fullfile(RootDir,'data','rawdata');
+        K.dir.net=fullfile(RootDir,'data','net');
+    else
+        h=errordlg('create variable global_ps containing K.dir.mldata, K.dir.pydata, K.dir.rawdata and K.dir.net, save it as global_ps.mat, and start again demo_ps');
+        waitfor(h)
+    end
+    cd(K.dir.mlprog)
+    IsK=0;
+else
     load global_ps
     MemK=K;
     IsK=1;
@@ -67,12 +79,9 @@ cd(K.dir.rawdata)
 [K.chip.myName,K.chip.name,K.chip.shortName,K.chip.species,K.chip.probesetNb,K.chip.probeNb,K.chip.compName,K.chip.ens47Name,K.chip.ens48Name,K.chip.geoName]=textread('chip.txt','%s%s%s%s%u%u%s%s%s%s','delimiter','\t');
 [K.chip.ref.rank,K.chip.ref.signal]=textread('signal_vs_rank.txt','%f%f','delimiter','\t');
 if IsK==0
-    K.chip.probesetNb=zeros(length(K.chip.myName),1);
     K.chip.maxProbeNb=zeros(length(K.chip.myName),1);
 else
-    K.chip.probesetNb=MemK.chip.probesetNb;
-    K.chip.maxProbeNb=MemK.chip.maxProbeNb;
-    
+    K.chip.maxProbeNb=MemK.chip.maxProbeNb;    
     clear MemK
 end
 

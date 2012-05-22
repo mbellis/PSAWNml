@@ -3,6 +3,39 @@
 %========================%
 %
 %
+% MAKE_PSGROUPS partitionates a series of probe sets in groups that can be considered
+%   as targeting the same transcript(s), based on their properties in
+%   a particular network or in a set of networks
+%
+% INPUT
+% 1        PsRanks: ranks of the currently processed probe sets
+% 2      PairedMat: set of vectors indicating the type of relation between each
+%                   possible couple of probe set in each networks (0: no correlation,
+%                   1: not significant correlation, 2: significant correlation)
+% 3          NetNb: nb of networks used
+% 4      TestLimit: the minimal number of network where a correlation values must exist
+%                   (either significative and coded by 2, or not significative and coded by 1
+%                   in PairedMat)
+% 5      GrpSizeNb: number of groups found in previous call of the function
+% 6       LinkType: indicates if the number of positive networks is counted in PairedMat by
+%                   counting values <=1 (=1) or <=2 (=2)
+%
+%OUTPUT
+% 1    PsGrp: groups of PsRanks
+% 2 GrpSizes: the distribution of ps group sizes
+% 3 LinkType: the type of link between to paired probe sets (0: no corr, 1: corr>0 but
+%             not similar (don't pass the test), 2: similar (pass the test))
+% 4 BadLinks: properties of pairs that don't pass the test but are in a ps group
+%             [PsL, GeneL, Node1, Node2, Nb of bad links in the group, Total nb of links in 
+%             the group, Nb of corr>0 (PairedMat=1), Nb of significative corr
+%             (pairedMat=2)];
+% 5     Hubs: during merging process of triangle, some transitory groups of probe sets
+%             are split into two new  groups.
+%             single probe sets that are common to these two groups are taken away and
+%             considered as forming a special group called a hub or a pivot which is in 
+%             relation with the two groups.
+%             [hub rank,first group rank,second group rank,size of the first group,
+%             size of the snd group]
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 %                          c) Michel Bellis                                                %
@@ -18,52 +51,31 @@
 %  THE GNU GENERAL PUBLIC LICENCE AND IN ACCORDANCE WITH THE EUROPEAN LEGISLATION.   %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%
 
-% MAKE_PSGROUPS partitionate a series of probe sets in groups that can be considered
-%   as targeting the same transcripts, based on their properties in
-%   a particular network or in a set of network
-
-% INPUT
-% 1        PsRanks: ranks of the group of probe sets
-% 2      PairedMat: set of vectors indicating the type of relation between each
-%                   possible couple of probe set in each networks (0: no correlation,
-%                   1: not significant correlation, 2: significant correlation)
-% 3          NetNb: nb of networks used
-% 4      TestLimit: the minimal number of network where a correlation values must exist
-%                   (either significative and coded by 2, or not significative and coded by 1
-%                   in PairedMat)
-% 5 GrpSizeNb:
-%OUTPUT
-%   PsGrp: groups of PsRanks
-
-%VERSION
-%   V03 - 23 07 2010 - Novel approach with count of networks with
-%   significative correlation for a given pair of probe set and using
-%   agregation of triangle
-%   V01 - 2009: only one network
-%   V02 - 2010-3-5 = several networks
-function [PsGrp,varargout]=make_psgroups(PsRanks,PairedMat,NetNb,TestLimit,GrpSizeNb,LinkType)
-
-if nargout==5
-    GrpSizes=zeros(1,GrpSizeNb);
-    LinkTypes=[];
-    BadLink=[];
-    Hubs=[];
-end
+function [PsGrp,GrpSizes,LinkTypes,BadLinks,Hubs]=make_psgroups(PsRanks,PairedMat,NetNb,TestLimit,GrpSizeNb,LinkType)
 
 
-%construct a matrix of paired probe sets by using information on the number of network
+GrpSizes=zeros(1,GrpSizeNb);
+LinkTypes=[];
+BadLinks=[];
+Hubs=[];
+
+
+%Construct a matrix of paired probe sets by using information on the number of network
 % with existing correlation between the paired probe sets
+
+%Transform PairedMat (cell type) into NetMat, a matrix indicating which network are 
+% considered as positive.
 PairNb=size(PairedMat,1);
-%Transform cel into matrix independant of link type (=> significatvie links)
 NetMat=zeros(PairNb,NetNb);
 for PairL=1:PairNb
     NetMat(PairL,:)=PairedMat{PairL};
 end
+%Consider as positive only networks where PairedMat>=LinkType
 NetMat(find(NetMat<LinkType))=0;
 NetMat(find(NetMat))=1;
 
-%find one of the largest set of pairs that have >= TestLimit significative 
-%links in the same networks
+%Find one of the largest set of probe sets which have >= TestLimit positive 
+%common networks
 MemPairs=[];
 for PairL1=1:PairNb
     CurrPair=NetMat(PairL1,:);
@@ -80,32 +92,26 @@ end
 Paired=zeros(1,PairNb);
 Paired(MemPairs)=1;
 
-% for PsL=1:PairNb
-%     if length(find(PairedMat{PsL}>=LinkType))>=TestLimit
-%         Paired(PsL)=1;
-%     end
-% end
-%transform this list into a symetric matrix (pairs are arranged in PairedMat
-%in a way taht allows this transformation
+%Transform this list into a symetric matrix (pairs are arranged in PairedMat
+%in a way that allows this transformation)
 Paired=squareform(Paired);
 PsNb=length(Paired);
 
-if nargout==5
-    %recover the type of the pairs
-    %either 2, if correlation values are all significative in all the networks
-    %or 1 if the number of networks with a positive correlation is greater or equal
-    %to TestLimit
-    PairedType=zeros(1,PairNb);
-    for PairL=1:PairNb
-        if sum(PairedMat{PairL})==NetNb*2
-            PairedType(PairL)=2;
-        %elseif length(find(PairedMat{PairL}>=LinkType))>=TestLimit
-        elseif ~isempty(find(MemPairs==PairL))
-            PairedType(PairL)=1;
-        end
+
+%Recover the type of the pairs
+%either 2, if correlation values are all significative in all the networks
+%or 1 if the number of networks with a positive correlation is greater or equal
+%to TestLimit
+PairedType=zeros(1,PairNb);
+for PairL=1:PairNb
+    if sum(PairedMat{PairL})==NetNb*2
+        PairedType(PairL)=2;  
+    elseif ~isempty(find(MemPairs==PairL))
+        PairedType(PairL)=1;
     end
-    PairedType=squareform(PairedType);
 end
+PairedType=squareform(PairedType);
+
 
 %ALGORITHM FOR SEARCHING TRIANGLES
 %construct a dictionnary of neighbhoors
@@ -114,7 +120,7 @@ for PsL=1:PsNb
     Nodes{PsL}=find(Paired(PsL,:));
 end
 
-%find existing triangle
+%find existing triangles (three probe sets where any paired probe sets are similar)
 Triangle=[];
 %nodes must have been already visited before being
 %eventually searched for the presence of a triangle
@@ -159,29 +165,9 @@ if TriangleNb>0
 
         while Continue
             if Processed(TriL1)==0|Processed(TriL2)==0
-                %process current pair of triangles
-                %                 TriL1
-                %                 TriL2
+                %process current pair of triangles, TriL and TriL
                 if length(intersect(Triangle(TriL1,:),Triangle(TriL2,:)))==2
                     %the two triangles have an edge in common => merge them
-                    %point specific to triangle 1
-                    %!!! Point1=setdiff(Triangle(TriL1,:),Triangle(TriL2,:));
-                    %point specific to triangle 2
-                    %!!! Point2=setdiff(Triangle(TriL2,:),Triangle(TriL1,:));
-                    %common points
-                    %!!! Point3=intersect(Triangle(TriL1,:),Triangle(TriL2,:));
-
-                    %!!!NewTriangle(1,:)=sort([Point1,Point2,Point3(1)]);
-                    %!!!NewTriangle(2,:)=sort([Point1,Point2,Point3(2)]);
-
-                    %!!!
-                    %PsGrpPos=length(PsGrp)+1;
-                    %if ~isempty(Processed(TriL1))!!!
-                    %    PsGrp{PsGrpPos,1}=unique([Triangle(TriL1,:),Triangle(TriL2,:)]);
-                    %else
-                    %    PsGrp{PsGrpPos,1}=unique([PsGrp{PsGrpPos},Triangle(TriL2,:)]);
-                    %end
-                    %!!!
 
                     %PsGrpPos indicates the ps group which contains Triangle TriL1
                     if Processed(TriL1)==0
@@ -196,25 +182,18 @@ if TriangleNb>0
 
                     %add eventually Triangle to current ps group if they have an edge in common
                     AddFlag=1;
-                    TriIndex=1:TriangleNb;
-                    %!!!TriIndex1=TriIndex;
+                    TriIndex=1:TriangleNb;                
                     IsAdded=0;
                     while AddFlag
                         AddFlag=0;
-                        %!!!for TriL3=length(TriIndex1):-1:1
                         for TriL3=length(TriIndex):-1:1
-                            %!!!if Processed(TriIndex(TriIndex1(TriL3)))==0
                             if Processed(TriIndex(TriL3))==0
-                                %!!!if length(intersect(Triangle(TriIndex(TriIndex1(TriL3)),:),PsGrp{PsGrpPos}))>=2
                                 if length(intersect(Triangle(TriIndex(TriL3),:),PsGrp{PsGrpPos}))>=2
-                                    %!!!!!!PsGrp{PsGrpPos,1}=unique([PsGrp{PsGrpPos},Triangle(TriL3,:)]);
                                     PsGrp{PsGrpPos,1}=unique([PsGrp{PsGrpPos},Triangle(TriIndex(TriL3),:)]);
                                     IsAdded=1;
-                                    %!!!!!!Processed(TriL3)=1;
                                     Processed(TriIndex(TriL3))=1;
                                     %suppress the processed triangle from TriIndex
                                     TriIndex(TriL3)=[];
-
                                     %process existing ps groups
                                     if ~isempty(PsGrp)
                                         [PsGrp,PsGrpPos]=MERGE_PSGROUPS(PsGrp,PsGrpPos);
@@ -268,9 +247,7 @@ if TriangleNb>0
                     elseif Processed(TriL1)&TriL1==TriangleNb-1
                         TriL1=TriangleNb-1;
                     end
-                    %restart TriL2
-                    %!!!if Continue
-                    %!!!if Processed(1)
+                    %restart TriL2                  
                     % exist at leat one zero position for TriL2
                     for TriPos=1:TriangleNb
                         if Processed(TriPos)==0
@@ -278,14 +255,8 @@ if TriangleNb>0
                             break
                         end
                     end
-                    %!!!else
-                    %!!!    TriL2=1;
-                    %!!!end
                     %end
                 else
-                    %%%TriL2=TriL2+1;
-                    %!!!if Processed(TriL2)
-                    %!!!for TriPos=TriL2+1:TriangleNb
                     for TriPos=TriL2+1:TriangleNb
                         % exist at leat one zero position for TriL2
                         % otherwise TriL2 should be set to TriangleNb
@@ -561,13 +532,13 @@ if ~isempty(PsGrp)
                         if CurrType==0
                             BadNb=BadNb+1;
                             Pos=(Node1*(2*PsNb-Node1-1)/2)+Node2-PsNb;
-                            BadLink=[BadLink;[Node1,Node2,0,CurrSize*(CurrSize-1)/2,length(find(PairedMat{Pos}==1)),length(find(PairedMat{Pos}==2))]];
+                            BadLinks=[BadLinks;[Node1,Node2,0,CurrSize*(CurrSize-1)/2,length(find(PairedMat{Pos}==1)),length(find(PairedMat{Pos}==2))]];
                         end
                     end
                 end
                 if BadNb>0
                     for BadL=1:BadNb
-                        BadLink(BadL,3)=BadNb;
+                        BadLinks(BadL,3)=BadNb;
                     end
                 end
                 LinkTypes=[LinkTypes;CurrLinkType];
@@ -581,12 +552,6 @@ if ~isempty(PsGrp)
     end
 end
 
-if nargout==5
-    varargout{1}=GrpSizes;
-    varargout{2}=LinkTypes;
-    varargout{3}=BadLink;
-    varargout{4}=Hubs;
-end
 
 %% MERGE_PSGROUPS
 function [PsGrp,PsGrpPos]=MERGE_PSGROUPS(PsGrp,PsGrpPos)

@@ -1,10 +1,10 @@
 %==========================%
 % FUNCTION DISPLAY_NODESIM %
 %==========================%
-
+%
 %DISPLAY_NODESIM displays figures related to statistics on similarity between different
-% pairs of probe sets calculated on a particular network.
-
+% categories of pairs of probe sets calculated on a particular network.
+%
 %INPUT PARAMETERS
 % 1 ProbeNbLimit: minimal number of probes targeting a gene
 %                 (used to make a bipartition of genes)
@@ -16,28 +16,8 @@
 % 7       SimNb:  number of similarity types to be displayed in figure 4 (from 1 to SimNb)
 %                 order is (Sim, OutSim, HighSim, LowHighSim, LowSim)
 % 8  AceviewFlag: indicates if Aceview is used
-
-%FIGURES
-
-% FIG 1 pv(sim) for pv corr limit in PvCorrLimit > 0 vs pv(sim) for pv corr limit = 0
-%       if PvCorrLimit=[0,40:60] for example
-%       shows that the pv of node similarity between to probe set is independant of the
-%       corr limit used to select the neighborhood of each probe set in the range 0-40
-%       and then decreases for pv corr limit = 50
-% FIG 2 pv(sim) vs corr(probe set pair) for different values of pv corr limit
-% FIG 3 pv(sim) distribution for different values of pair corr limit
-% Fig 4 pv(sim) distribution of pairs with corr>0 for different values of pv corr limit
-% Fig 5 corr(pair), anti(pair) distribution  for pairs with corr>0
-% Fig 6 properties of Sim pairs
-% Fig 7 pv(sim), corr-anti (pair), anti (pair) ordered on corr or on anti
-% FIG 8 Histogram of node number and of overlap between probe sets of a pair at different
-%       values of pv corr limit
-% FIG 9 Plots of node number and of overlap between probe sets of a pair
-%       at different values of pv corr limit
-% FIG 10 Enrichment of trnascript and probe nb
-% FIG 11 Distribution of probe nb in different pv, corr and anti value combinations
-% FIG 12 Enrichment of probe nb in different pv, corr and anti value combinations
-
+%
+%FIGURES 19 to 29
 
 %vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv%
 %                          c) Michel Bellis                                                %
@@ -163,13 +143,13 @@ clear Sim
 
 %% load gene information of probe sets
 cd(DataDir)
-eval(sprintf('load m%u_probesets_by_ensembl_gene',ChipRank))
+eval(sprintf('load m%u_ensembl_psinfo',ChipRank))
 PsInfo{1}=EPsInfo;
-clear EGeneName EGeneNames ETargetedGenes ETargetingPsRanks EPsNames EPsRanks ETargetedTs ENotTargetedTs EPsInfo
+clear EPsInfo
 if AceviewFlag
-    eval(sprintf('load m%u_probesets_by_aceview_gene',ChipRank))
+    eval(sprintf('load m%u_aceview_psinfo',ChipRank))
     PsInfo{2}=APsInfo;
-    clear AGeneName AGeneNames ATargetedGenes ATargetingPsRanks APsNames APsRanks ATargetedTs ANotTargetedTs APsInfo
+    clear APsInfo
 end
 
 %% load or fill CompInfo files
@@ -239,11 +219,11 @@ Titles{2}={'InSim multiple','OutSim multiple','HSim multiple','LHSim multiple','
 PvNb=length(PvCorrLimit);
 
 if TestFlag
-    %% FIG 4  pv(sim) for pv corr limit in PvCorrLimit > 0 vs pv(sim) for pv corr limit = 0
+    %% FIG 19  pv(sim) for pv corr limit in PvCorrLimit > 0 vs pv(sim) for pv corr limit = 0
     %  if PvCorrLimit=[0,40:60] for example
     Letters='abcdefgh';
-    if ~isempty(find(FigRanks==4))
-        FigRank=4;
+    if ~isempty(find(FigRanks==19))
+        FigRank=19;
         for PvL=1:length(PvCorrLimit)-1
             h=figure;
             set(h,'name',sprintf('FIG%u%c- Effect of pv corr limit on pv(similarity) - Corr%u vs Corr%u',FigRank,Letters(PvL),PvCorrLimit(1+PvL),PvCorrLimit(1)))
@@ -277,9 +257,9 @@ if TestFlag
         end
     end
 
-    %% FIG 5  pv(sim) vs corr(probe set pair) for different values of pv corr limit
-    if ~isempty(find(FigRanks==5))
-        FigRank=5;
+    %% FIG 20  pv(sim) vs corr(probe set pair) for different values of pv corr limit
+    if ~isempty(find(FigRanks==20))
+        FigRank=20;
         for PvL=1:length(PvCorrLimit)
             h=figure;
             set(gcf,'color',[1,1,1])
@@ -311,9 +291,9 @@ if TestFlag
         end
     end
 
-    %% FIG 6  pv(sim) distribution for different values of pair corr limit
-    if ~isempty(find(FigRanks==6))
-        FigRank=6;
+    %% FIG 21  pv(sim) distribution for different values of pair corr limit
+    if ~isempty(find(FigRanks==21))
+        FigRank=21;
         Lines='-:';
         Legend=cell(length(PairCorrLimit)+1,1);
         for i=1:length(Legend)
@@ -397,9 +377,9 @@ if TestFlag
         end
     end
 
-    %% FIG 7  pv(sim) distribution of pairs with corr>0 for different values of pv corr limit
-    if ~isempty(find(FigRanks==7))
-        FigRank=7;
+    %% FIG 22  pv(sim) distribution of pairs with corr>0 for different values of pv corr limit
+    if ~isempty(find(FigRanks==22))
+        FigRank=22;
         h=figure;
         set(gcf,'color',[1,1,1])    
         set(h,'name',sprintf('FIG%u - Pv distributions',FigRank))
@@ -431,9 +411,9 @@ if TestFlag
         saveas(h,sprintf('m%u_fig%u.png',ChipRank,FigRank),'png')
         close(h)
     end
-    %% FIG 8 corr(pair), anti(pair) distribution  for pairs with corr>0
-    if ~isempty(find(FigRanks==8))
-        FigRank=8;
+    %% FIG 23 corr(pair), anti(pair) distribution  for pairs with corr>0
+    if ~isempty(find(FigRanks==23))
+        FigRank=23;
         h=figure;
         set(gcf,'color',[1,1,1])
         subplot(1,3,1)
@@ -499,10 +479,10 @@ if TestFlag
         close(h)
     end
 
-    %% FIG 9 properties of Sim pairs
+    %% FIG 24 properties of Sim pairs
 
-    if ~isempty(find(FigRanks==9))
-        FigRank=9;
+    if ~isempty(find(FigRanks==24))
+        FigRank=24;
         h=figure;
         set(gcf,'color',[1,1,1])
         set(h,'name',sprintf('FIG%u - Distributions of all properties for different Sim',FigRank))
@@ -712,9 +692,9 @@ if TestFlag
     %       ANTI values are inversely correlated to CORR values
     %   that there exist probeset with O correlation (and 0 anti) but a similar neighboorh
 
-    %% FIG 10 pv(sim), corr-anti (pair), anti (pair) ordered on corr or on anti
-    if ~isempty(find(FigRanks==10))
-        FigRank=10;
+    %% FIG 25 pv(sim), corr-anti (pair), anti (pair) ordered on corr or on anti
+    if ~isempty(find(FigRanks==25))
+        FigRank=25;
         SimL=1;
         h=figure;
         set(gcf,'color',[1,1,1])
@@ -878,10 +858,10 @@ if TestFlag
 
     end
 
-    %% FIG 11 Histogram of node number and of overlap between probe sets of a pair at different
+    %% FIG 26 Histogram of node number and of overlap between probe sets of a pair at different
     %        values of pv corr limit
-    if ~isempty(find(FigRanks==11))
-        FigRank=11;
+    if ~isempty(find(FigRanks==26))
+        FigRank=26;
         for PvL=1:length(PvCorrLimit)
             h=figure;
             set(gcf,'color',[1,1,1])
@@ -938,10 +918,10 @@ if TestFlag
         end
     end
 
-    %% FIG 12 Plots of node number and of overlap between probe sets of a pair
+    %% FIG 27 Plots of node number and of overlap between probe sets of a pair
     %        at different values of pv corr limit
-    if ~isempty(find(FigRanks==12))
-        FigRank=12;
+    if ~isempty(find(FigRanks==27))
+        FigRank=27;
         for PlotL=1:2
             h=figure;
             set(gcf,'color',[1,1,1])
@@ -1024,10 +1004,10 @@ if TestFlag
 
 
 
-    %% FIG 13 Distribution of probe nb in different pv, corr and anti value combinations
+    %% FIG 28 Distribution of probe nb in different pv, corr and anti value combinations
 
-    if ~isempty(find(FigRanks==13))
-        FigRank=13;
+    if ~isempty(find(FigRanks==28))
+        FigRank=28;
         for PlotL=1:2
             h=figure;
             set(gcf,'color',[1,1,1])
@@ -1086,9 +1066,9 @@ if TestFlag
     end
 
 
-    %% FIG 14 Enrichment of probe nb in different pv, corr and anti value combinations
-    if ~isempty(find(FigRanks==14))
-        FigRank=14;
+    %% FIG 29 Enrichment of probe nb in different pv, corr and anti value combinations
+    if ~isempty(find(FigRanks==29))
+        FigRank=29;
         for PlotL=1:2
             CurrProbeNb=min([CompInfo{PlotL}{1}{1}.minProbe1In,CompInfo{PlotL}{1}{1}.minProbe2In],[],2);
             ProbeCat=histc(CurrProbeNb,1:ProbeNb);

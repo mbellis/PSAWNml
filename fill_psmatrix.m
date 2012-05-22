@@ -1,8 +1,11 @@
 %========================%
 % FUNCTION FILL_PSMATRIX %
 %========================%
-
-%PsMatrix:
+%
+%FILL_PSMATRIX constructs PsMatrix which summarize information on probe sets in a 
+% numeric table
+%
+%PsMatrix columns:
 %  1: rank of the assigned gene to the current probe set
 %  2: position of the assigned gene in NewPs.geneNames
 %  3: target type of assigned gene
@@ -53,7 +56,6 @@ for PsL1=1:length(CurrPsRanks)
 
         % position of the gene targeted with the maximal number of probes
         CurrGenePos=GenePos(PsL1);       
-        CurrGeneName=NewPs{CurrPsRank}.geneNames{CurrGenePos};
         
         %other ps considered as targeting the same gene
         if ~isempty(PsPos)
@@ -92,21 +94,18 @@ for PsL1=1:length(CurrPsRanks)
         ProbeNbs(IdemPos)=[];
         %7th position : nb of not assigned genes targetted with less nb of probes
         PsMatrix(CurrPsRank,7)=length(ProbeNbs);
+        %Ranks of all probe sets that are assigned to the current gene
         AllPsRanks=NewPs{CurrPsRank}.psRanks{CurrGenePos}(UsedPsPos);
+        %idem minus the current probe set rank
         OtherPsRanks=setdiff(AllPsRanks,CurrPsRank);
         
         CurrGeneRank=NewPs{CurrPsRank}.geneRanks(CurrGenePos);
 
         %9th position: rank of the parent probe set
         PsMatrix(CurrPsRank,9)=CurrPsRank;
-
-        %12th position: nb of groups of transcripts corresponding to the
-        %assigned gene
-        %14th position: Rank of the second group of transcripts targetted by the current
-        %               probe set in the assigned gene if the current probe set is
-        %               a pivot
+        
+        %Process groups of transcript(s)
         Grps=NewPs{CurrPsRank}.grp{CurrGenePos};
-
         %all grps are identical and in the same order in all the PsMatrix
         %assign Got
         Got=zeros(length(AllPsRanks),2);
@@ -120,36 +119,57 @@ for PsL1=1:length(CurrPsRanks)
                 Got(CurrPsPos,1)=GotRank;
             end
         end
-        if~isempty(Stat.hubs)
-            for GrpL=1:length(Grps)
-                for PsL2=1:length(Grps{GrpL})
-                    %process only if the ps target the current gene
-                    if ~isempty(find(AllPsRanks==Grps{GrpL}(PsL2)))
-                        %recover position of the current hub                   
-                        Pos=find(Stat.hubs(:,1)==Grps{GrpL}(PsL2)&Stat.hubs(:,2)==find(NewPs{Grps{GrpL}(PsL2)}.geneRanks==CurrGeneRank));                        
-                        if ~isempty(Pos)
-                            %12th position: [0,1] indicates if the current
-                            %probe set is a pivot
-                            PsMatrix(Grps{GrpL}(PsL2),12)=1;
-                            % 17: [0,1] indicates that the probe set is paired with a pivot
-                            GotRanks=[];
-                            for HubL=1:length(Pos)
-                                PsMatrix(Grps{Stat.hubs(Pos(HubL),4)},17)=1;
-                                CurrPsPos=find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),4)}(1));
-                                GotRanks=[GotRanks,Got(CurrPsPos,1)];
-                                PsMatrix(Grps{Stat.hubs(Pos(HubL),5)},17)=1;
-                                CurrPsPos=find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),5)}(1));
-                                GotRanks=[GotRanks,Got(CurrPsPos,1)];
-                            end
-                            %construct binary string
-                            if ~isempty(GotRanks)
-                                BinStr=repmat('0',1,max(GotRanks));
-                                for GotL=1:length(GotRanks)
-                                    BinStr(GotRanks(GotL))='1';
+        if length(AllPsRanks)>1
+            if~isempty(Stat.hubs)
+                for GrpL=1:length(Grps)
+                    for PsL2=1:length(Grps{GrpL})
+                        %process only if the ps target the current gene
+                        if ~isempty(find(AllPsRanks==Grps{GrpL}(PsL2)))
+                            %recover position of the current hub
+                            Pos=find(Stat.hubs(:,1)==Grps{GrpL}(PsL2)&Stat.hubs(:,2)==find(NewPs{Grps{GrpL}(PsL2)}.geneRanks==CurrGeneRank));
+                            if ~isempty(Pos)
+                                % 13th position: [0,1] indicates that the probe set is paired with a pivot                                
+                                GotRanks=[];
+                                for HubL=1:length(Pos)
+                                    RecoverGot=1;
+                                    for PsL3=1:length(Grps{Stat.hubs(Pos(HubL),4)})
+                                        if ~isempty(find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),4)}(PsL3)))
+                                            PsMatrix(Grps{Stat.hubs(Pos(HubL),4)}(PsL3),13)=1;
+                                            if RecoverGot                                    
+                                                RecoverGot=0;
+                                                CurrPsPos=find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),4)}(PsL3));
+                                                GotRanks(end+1)=Got(CurrPsPos,1);                                                
+                                            end
+                                        end
+                                    end
+
+                                    RecoverGot=1;
+                                    for PsL3=1:length(Grps{Stat.hubs(Pos(HubL),5)})
+                                        if ~isempty(find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),5)}(PsL3)))
+                                            PsMatrix(Grps{Stat.hubs(Pos(HubL),5)}(PsL3),13)=1;
+                                            if RecoverGot                                    
+                                                RecoverGot=0;
+                                                CurrPsPos=find(AllPsRanks==Grps{Stat.hubs(Pos(HubL),5)}(PsL3));
+                                                GotRanks(end+1)=Got(CurrPsPos,1);                                                
+                                            end
+                                        end
+                                    end
                                 end
-                                BinStr=fliplr(BinStr);
-                                CurrPsPos=find(AllPsRanks==Grps{GrpL}(PsL2));
-                                Got(CurrPsPos,2)=bin2dec(BinStr);
+                                if ~isempty(GotRanks)
+                                    %12th position: [0,1] indicates if the current
+                                    %probe set is a pivot
+                                    PsMatrix(Grps{GrpL}(PsL2),12)=1;
+                                    %construct binary string
+                                    if ~isempty(GotRanks)
+                                        BinStr=repmat('0',1,max(GotRanks));
+                                        for GotL=1:length(GotRanks)
+                                            BinStr(GotRanks(GotL))='1';
+                                        end
+                                        BinStr=fliplr(BinStr);
+                                        CurrPsPos=find(AllPsRanks==Grps{GrpL}(PsL2));
+                                        Got(CurrPsPos,2)=bin2dec(BinStr);
+                                    end
+                                end
                             end
                         end
                     end
@@ -159,7 +179,7 @@ for PsL1=1:length(CurrPsRanks)
 
         %8th position: nb of groups of transcripts corresponding to the assigned gene
         PsMatrix(CurrPsRank,8)=max(Got(:,1));
-
+        
         %fill Group of Transcripts
         %10th position: Rank of the group of transcripts targetted by the current
         %               probe set in the assigned gene
@@ -168,7 +188,7 @@ for PsL1=1:length(CurrPsRanks)
         for PsL2=1:length(AllPsRanks)
             PsMatrix(AllPsRanks(PsL2),10)=Got(PsL2,1);
             PsMatrix(AllPsRanks(PsL2),11)=Got(PsL2,2);
-        end
+        end                        
         
         %14th position: nb of probe sets that do not target the assigned gene but target
         % a common gene with the current probe set
@@ -277,6 +297,17 @@ for PsL1=1:length(CurrPsRanks)
                 PsMatrix(CurrPsRank2,17)=ClassRank;           
             end
         end
+        if length(find(PsMatrix(:,10)>PsMatrix(:,8)))>0
+            h=errordlg('PsMatrix(x,10)>PsMatrix(x,8)');
+            waitfor(h)
+            error('process canceled')
+        end
+        if length(find(PsMatrix(:,12)>0&PsMatrix(:,11)==0))>0
+            h=errordlg('PsMatrix(x,12)>0&PsMatrix(x,11)==0');
+            waitfor(h)
+            error('process canceled')
+        end       
+
     end % if PsMade(PsL1)
 end %for PsL1
 
